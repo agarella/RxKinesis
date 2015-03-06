@@ -5,11 +5,14 @@ import java.util
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
+import org.apache.log4j.Logger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
 class RecordProcessor extends IRecordProcessor {
+
+  val logger = Logger.getRootLogger
 
   var kinesisShardID: String = _
   private var buffer: scala.collection.mutable.ListBuffer[String] = _
@@ -34,9 +37,9 @@ class RecordProcessor extends IRecordProcessor {
     records.toList.foreach {
       (record: Record) => {
         try {
-          println(s"Sequence number: ${record.getSequenceNumber}")
+          logger.trace(s"Sequence number: ${record.getSequenceNumber}")
           buffer += new String(record.getData.array())
-          println(s"Partition key: ${record.getPartitionKey}")
+          logger.trace(s"Partition key: ${record.getPartitionKey}")
         } catch {
           case t: Throwable =>
             println(s"Caught throwable while processing record $record")

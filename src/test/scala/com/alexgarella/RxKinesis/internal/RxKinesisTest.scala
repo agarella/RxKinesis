@@ -6,22 +6,23 @@ import rx.lang.scala.Observer
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  feature("") {
+  feature("Reactive streaming from Kinesis") {
 
     Given("an RxKinesis observable")
-    val rxKinesis = RxKinesis.kinesisObservable()
+    val kinesisObservable = RxKinesis.getObservable
 
     And("an observer")
-    val observer = new Observer[String]{
-      var count = 0
+    val kinesisObserver = new Observer[String]{
       override def onNext(value: String): Unit = println(s"Data: $value")
       override def onError(error: Throwable): Unit = println(error.getMessage)
     }
 
     When("subscribing")
-    val s = rxKinesis.subscribe(observer)
+    kinesisObservable.subscribe(kinesisObserver)
 
-    Then("the code of the observer will be executed async")
+    And("starting the stream")
     RxKinesis.stream()
+
+    Then("the stream will be handled in async by the observer")
   }
 }
