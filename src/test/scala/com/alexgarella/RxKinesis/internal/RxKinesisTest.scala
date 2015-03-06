@@ -22,6 +22,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     val s = rxKinesis.subscribe(observer)
 
     Then("the code of the observer will be executed async")
-    RxKinesis.startProcessing()
+    RxKinesis.stream()
   }
 }
