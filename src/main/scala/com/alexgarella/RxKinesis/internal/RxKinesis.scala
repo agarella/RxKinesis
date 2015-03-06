@@ -1,44 +1,40 @@
 package com.alexgarella.RxKinesis.internal
 
-import java.nio.ByteBuffer
+import java.util.UUID
 
-import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
-import com.amazonaws.services.kinesis.model.{GetRecordsRequest, PutRecordRequest}
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.services.kinesis.AmazonKinesisClient
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{Worker, InitialPositionInStream, KinesisClientLibConfiguration}
+import com.amazonaws.services.s3.model.Region
 import rx.lang.scala.Observable
-
-import scala.collection.JavaConversions._
-import scala.util.{Failure, Success, Try}
 
 object RxKinesis {
 
-  private val kinesis = new AmazonKinesisAsyncClient()
+  val kinesis = new AmazonKinesisClient()
+  val workerId = String.valueOf(UUID.randomUUID())
+  val kclConfig =
+    new KinesisClientLibConfiguration("app", "test", new ProfileCredentialsProvider(), workerId)
+  kclConfig.withRegionName(Region.EU_Frankfurt.toString)
+  kclConfig.withInitialPositionInStream(InitialPositionInStream.LATEST)
 
-  def writeData(data: ByteBuffer): Unit = {
-    Try {
-      val putRecord = new PutRecordRequest
-      putRecord.setStreamName("test")
-      putRecord.setPartitionKey("0")
-      putRecord.setData(data)
-      kinesis.putRecord(putRecord)
-    } match {
-      case Success(_)            => ()
-      case Failure(e: Throwable) => throw e
-    }
-  }
+  val recordProcessor = RecordProcessorFactory.recordProcessor
+
+  def startProcessing(): Unit = new Worker(new RecordProcessorFactory, kclConfig).run()
 
   def kinesisObservable(): Observable[String] = {
     Observable[String](
       subscriber => {
-        val shardId = kinesis.describeStream("test").getStreamDescription.getShards.toList.head.getShardId
-        val shardIterator = kinesis.getShardIterator("test", shardId, "LATEST").getShardIterator
-        val getRecordsRequest = new GetRecordsRequest()
-        getRecordsRequest.setShardIterator(shardIterator)
-        val records = kinesis.getRecords(getRecordsRequest)
-        records.getRecords.toList.foreach { r =>
-            subscriber.onNext(r.getData.asIntBuffer().get().toString)
-        }
+        new Thread(
+          new Runnable() {
+            def run(): Unit = {
+              while (!subscriber.isUnsubscribed) {
+                if(recordProcessor.isAvailable) {
+                  recordProcessor.read().foreach(subscriber.onNext)
+                }
+              }
+            }
+          }).start()
       }
     )
   }
-
 }
