@@ -1,18 +1,16 @@
-package com.alexgarella.RxKinesis.internal
+package com.alexgarella.rxkinesis.internal
 
 import java.util
 
+import com.alexgarella.rxkinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
 import com.amazonaws.services.kinesis.model.Record
-import org.apache.log4j.Logger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
-class RecordProcessor extends IRecordProcessor {
-
-  val logger = Logger.getRootLogger
+class RecordProcessor extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
   private var buffer: scala.collection.mutable.ListBuffer[String] = _
@@ -37,13 +35,15 @@ class RecordProcessor extends IRecordProcessor {
     records.toList.foreach {
       (record: Record) => {
         try {
-          logger.trace(s"Sequence number: ${record.getSequenceNumber}")
-          buffer += new String(record.getData.array())
-          logger.trace(s"Partition key: ${record.getPartitionKey}")
+          logger.info(s"Sequence number: ${record.getSequenceNumber}")
+          val data: String = new String(record.getData.array())
+          buffer += data
+          logger.info(s"Data: $data")
+          logger.info(s"Partition key: ${record.getPartitionKey}")
         } catch {
           case t: Throwable =>
-            println(s"Caught throwable while processing record $record")
-            println(t)
+            logger.error(s"Caught throwable while processing record $record")
+            logger.error(t)
         }
       }
     }

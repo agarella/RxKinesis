@@ -1,4 +1,4 @@
-package com.alexgarella.RxKinesis.internal
+package com.alexgarella.rxkinesis.internal
 
 import java.util.UUID
 
@@ -8,7 +8,10 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionI
 import com.amazonaws.services.s3.model.Region
 import rx.lang.scala.Observable
 
-object RxKinesis {
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
+class RxKinesis {
 
   lazy val kinesis = new AmazonKinesisClient()
   lazy val workerId = UUID.randomUUID().toString
@@ -18,22 +21,13 @@ object RxKinesis {
 
   def stream(): Unit = new Worker(new RecordProcessorFactory, kclConfig).run()
 
-  def getObservable: Observable[String] = {
-    Observable[String](
-      subscriber => {
-        new Thread(
-          new Runnable() {
-            def run(): Unit = {
-              while (!subscriber.isUnsubscribed) {
-                if(recordProcessor.isAvailable) {
-                  recordProcessor.read().foreach(subscriber.onNext)
-                }
-              }
-            }
-          }).start()
+  def getObservable: Observable[String] = Observable[String](
+    subscriber => Future {
+      while (!subscriber.isUnsubscribed) {
+        if (recordProcessor.isAvailable) recordProcessor.read().foreach(subscriber.onNext)
       }
-    )
-  }
+    }
+  )
 
   private def getConfiguration: KinesisClientLibConfiguration = {
     val config = new KinesisClientLibConfiguration("app", "test", new ProfileCredentialsProvider(), workerId)
