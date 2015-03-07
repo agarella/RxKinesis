@@ -9,12 +9,13 @@ import com.amazonaws.services.kinesis.model.Record
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
+import scala.util.{Failure, Success, Try}
 
 class RecordProcessor extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
-  private var buffer: scala.collection.mutable.ListBuffer[String] = _
-  private var available = false
+  var buffer: ListBuffer[String] = ListBuffer.empty
+  var available = false
 
   def isAvailable: Boolean = available
 
@@ -34,16 +35,20 @@ class RecordProcessor extends IRecordProcessor with Logging {
     buffer = ListBuffer()
     records.toList.foreach {
       (record: Record) => {
-        try {
-          logger.info(s"Sequence number: ${record.getSequenceNumber}")
-          val data: String = new String(record.getData.array())
-          buffer += data
-          logger.info(s"Data: $data")
-          logger.info(s"Partition key: ${record.getPartitionKey}")
-        } catch {
-          case t: Throwable =>
-            logger.error(s"Caught throwable while processing record $record")
-            logger.error(t)
+        {
+          Try {
+            logger.info(s"Sequence number: ${record.getSequenceNumber}")
+            val data: String = new String(record.getData.array())
+            buffer += data
+            logger.info(s"Data: $data")
+            logger.info(s"Partition key: ${record.getPartitionKey}")
+          } match {
+            case Success(_) => ()
+            case Failure(t) => {
+              logger.error(s"Caught throwable while processing record $record")
+              logger.error(t)
+            }
+          }
         }
       }
     }
