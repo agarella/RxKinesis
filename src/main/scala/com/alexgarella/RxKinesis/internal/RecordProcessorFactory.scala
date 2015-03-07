@@ -1,7 +1,7 @@
-package com.alexgarella.RxKinesis.internal
+package com.alexgarella.rxkinesis.internal
 
-import com.alexgarella.RxKinesis.internal.RecordProcessorFactory._
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorFactory}
+import com.alexgarella.rxkinesis.internal.RecordProcessorFactory._
 
 class RecordProcessorFactory extends IRecordProcessorFactory {
 
