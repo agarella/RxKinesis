@@ -36,19 +36,17 @@ class RecordProcessor extends IRecordProcessor with Logging {
   override def processRecords(records: util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     records.toList.foreach {
       (record: Record) => {
-        {
-          Try {
-            Log.info(s"Sequence number: ${record.getSequenceNumber}")
-            val data: String = new String(record.getData.array())
-            buffer += data
-            Log.info(s"Data: $data")
-            Log.info(s"Partition key: ${record.getPartitionKey}")
-          } match {
-            case Success(_) => ()
-            case Failure(t) => {
-              Log.error(s"Caught throwable while processing record $record")
-              Log.error(t)
-            }
+        Try {
+          Log.info(s"Sequence number: ${record.getSequenceNumber}")
+          val data: String = new String(record.getData.array())
+          buffer += data
+          Log.info(s"Data: $data")
+          Log.info(s"Partition key: ${record.getPartitionKey}")
+        } match {
+          case Success(_) => ()
+          case Failure(t) => {
+            Log.error(s"Caught throwable while processing record $record")
+            Log.error(t)
           }
         }
       }
