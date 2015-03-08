@@ -24,7 +24,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
   val NumberOfElements = 10
   val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey: String = "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"
-  val StreamName = "stream"
+  val StreamName = "08032015"
 
   var buffer: ListBuffer[Int] = ListBuffer.empty
 
@@ -41,10 +41,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       val kinesisObservable = rxKinesis.getObservable.map(Integer.parseInt).filter(isEven).take(NumberOfElements)
 
       And("an observer")
-      val kinesisObserver = new Observer[Int] {
-        override def onNext(value: Int): Unit = buffer += value
-        override def onError(error: Throwable): Unit = println(error.getMessage)
-      }
+      val kinesisObserver = getObserver
 
       When("subscribing")
       kinesisObservable.subscribe(kinesisObserver)
@@ -53,9 +50,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       Future { rxKinesis.stream() }
 
       When("sending data to the record processor")
-      Thread.sleep(30000)
       Future { writeToStream() }
-      while (buffer.size < NumberOfElements) { /* Block thread until we have buffered enough elements */ }
+      Thread.sleep(30000)
 
       Then("the result will contain only even numbers")
       assertResult(true)(buffer.forall(isEven))
@@ -65,7 +61,13 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     }
   }
 
+  def getObserver: Observer[Int] = new Observer[Int] {
+    override def onNext(value: Int): Unit = buffer += value
+    override def onError(error: Throwable): Unit = println(error.getMessage)
+  }
+
   def writeToStream(): Unit = {
+    Thread.sleep(20000)
     val profileCredentialsProvider: ProfileCredentialsProvider = mockProfileCredentialsProvider
     val client = new AmazonKinesisClient(profileCredentialsProvider)
     client.setEndpoint("kinesis.eu-central-1.amazonaws.com", "kinesis", "eu-central-1")
@@ -76,6 +78,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       putRecordRequest.setData(ByteBuffer.wrap(value))
       putRecordRequest.setPartitionKey("1")
       client.putRecord(putRecordRequest)
+      Thread.sleep(100)
     }
 
   }
