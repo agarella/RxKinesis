@@ -1,7 +1,5 @@
 package com.alexgarella.RxKinesis.internal
 
-import java.util
-
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorCheckpointer}
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason
@@ -22,7 +20,7 @@ class RecordProcessor extends IRecordProcessor with Logging {
 
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
-  override def processRecords(records: util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
+  override def processRecords(records: java.util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     def processRecord(record: Record): String = {
       val data = new String(record.getData.array())
       Log.info(s"Data: $data")

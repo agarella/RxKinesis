@@ -23,15 +23,14 @@ import scala.util.Random
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val NumberOfElements = 10
   val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey: String = "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"
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
   val StreamName = "15032015"
 
   feature("Reactive streaming from Kinesis") {
-
     val rxKinesis = new RxKinesis(getConfiguration)
+    val NumberOfElements = 10
 
     scenario(s"Stream $NumberOfElements even numbers from Kinesis") {
       var buffer: ListBuffer[Int] = ListBuffer.empty
@@ -85,6 +84,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
         override def onNext(value: String): Unit = buffer2 += value
         override def onError(error: Throwable): Unit = println(error.getMessage)
       }
+
       val kinesisObservable1 = rxKinesis.getObservable.take(NumberOfElements)
       val kinesisObservable2 = rxKinesis.getObservable.take(NumberOfElements)
 
@@ -116,6 +116,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     Thread.sleep(20000)
     val client = new AmazonKinesisClient(mockProfileCredentialsProvider)
     client.setEndpoint(EndPoint, "kinesis", "eu-central-1")
+
     while (true) {
       val putRecordRequest = new PutRecordRequest
       putRecordRequest.setStreamName(StreamName)
