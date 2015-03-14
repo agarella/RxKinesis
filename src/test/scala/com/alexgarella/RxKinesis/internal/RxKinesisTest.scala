@@ -1,4 +1,4 @@
-package com.alexgarella.rxkinesis.internal
+package com.alexgarella.RxKinesis.internal
 
 import java.nio.ByteBuffer
 import java.util.UUID
@@ -24,7 +24,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
   val NumberOfElements = 10
   val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey: String = "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"
-  val StreamName = "08032015"
+  val StreamName = "15032015"
 
   var buffer: ListBuffer[Int] = ListBuffer.empty
 
