@@ -1,5 +1,6 @@
-package com.alexgarella.RxKinesis.internal
+package com.alexgarella.RxKinesis
 
+import com.alexgarella.RxKinesis.RecordProcessor.{RecordProcessor, RecordProcessorFactory}
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{KinesisClientLibConfiguration, Worker}
 import rx.lang.scala.Observable
 
