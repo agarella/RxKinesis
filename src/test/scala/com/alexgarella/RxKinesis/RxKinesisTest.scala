@@ -3,7 +3,6 @@ package com.alexgarella.RxKinesis
 import java.nio.ByteBuffer
 import java.util.UUID
 
-import com.alexgarella.RxKinesis.RxKinesis
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.AmazonKinesisClient
