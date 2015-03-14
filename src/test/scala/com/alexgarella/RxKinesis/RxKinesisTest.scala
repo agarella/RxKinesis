@@ -33,16 +33,14 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     val NumberOfElements = 10
 
     scenario(s"Stream $NumberOfElements even numbers from Kinesis") {
-      var buffer: ListBuffer[Int] = ListBuffer.empty
+      val buffer: ListBuffer[Int] = ListBuffer.empty
 
       def getObserver: Observer[Int] = new Observer[Int] {
         override def onNext(value: Int): Unit = buffer += value
         override def onError(error: Throwable): Unit = println(error.getMessage)
       }
 
-      def isEven = (x: Int) => {
-        x % 2 == 0
-      }
+      def isEven = (x: Int) => { x % 2 == 0 }
 
       Given("an RxKinesis observable which filters even numbers")
       val kinesisObservable = rxKinesis.getObservable.map(Integer.parseInt).filter(isEven).take(NumberOfElements)
@@ -72,8 +70,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     scenario("Creating multiple RxStreams from one kinesis stream") {
 
       Given("two RxKinesis observable which take 10 elements")
-      var buffer1: ListBuffer[String] = ListBuffer.empty
-      var buffer2: ListBuffer[String] = ListBuffer.empty
+      val buffer1: ListBuffer[String] = ListBuffer.empty
+      val buffer2: ListBuffer[String] = ListBuffer.empty
 
       def getObserver1: Observer[String] = new Observer[String] {
         override def onNext(value: String): Unit = buffer1 += value
@@ -110,7 +108,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       rxKinesis.stop()
     }
   }
-
 
   def writeToStream(): Unit = {
     Thread.sleep(20000)

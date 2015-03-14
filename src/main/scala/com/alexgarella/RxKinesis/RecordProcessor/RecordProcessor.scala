@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
 class RecordProcessor extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
-  var subscribers: ListBuffer[Subscriber[String]] = ListBuffer.empty
+  val subscribers: ListBuffer[Subscriber[String]] = ListBuffer.empty
 
   def subscribe(subscriber: Subscriber[String]): Unit = { subscribers += subscriber }
 
