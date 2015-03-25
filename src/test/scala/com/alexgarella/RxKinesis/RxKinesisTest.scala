@@ -26,7 +26,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
   val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey: String = "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"
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
-  val StreamName = "15032015"
+  val StreamName = "TestStream"
 
   feature("Reactive streaming from Kinesis") {
     val NumberOfElements = 10
@@ -62,8 +62,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
       And(s"the result list will have $NumberOfElements elements")
       assertResult(NumberOfElements)(buffer.size)
-
-      rxKinesis.stop()
     }
 
     scenario("composing two observables") {
@@ -97,8 +95,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
       Then(s"the result should be larger or equal to ${(1 to 5).sum}")
       assertResult(true)(result.headOption.getOrElse(-1) >= (1 to 5).sum)
-
-      rxKinesis.stop()
     }
   }
 
