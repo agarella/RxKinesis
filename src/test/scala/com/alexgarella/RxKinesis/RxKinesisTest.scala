@@ -23,8 +23,8 @@ import scala.util.Random
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
-  val SecretAccessKey: String = "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"
+  val AccessKeyId = "AKIAJQEQD3XQAC25Z4VQ"
+  val SecretAccessKey = "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"
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
   val StreamName = "TestStream"
 
@@ -134,7 +134,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       Then(s"the result should contain 5 1s")
       assertResult(5)(result.count(_ == 1))
 
-      Then(s"the result should contain ${NumberOfElements - 5} elements which are different from 1 ")
+      Then(s"the result should contain ${NumberOfElements - 5} elements other than 1")
       assertResult(NumberOfElements - 5)(result.count(_ != 1))
     }
   }
