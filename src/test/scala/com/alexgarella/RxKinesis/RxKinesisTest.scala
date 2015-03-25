@@ -23,8 +23,8 @@ import scala.util.Random
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
-  val SecretAccessKey: String = "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"
+  val AccessKeyId = "AKIAJQEQD3XQAC25Z4VQ"
+  val SecretAccessKey = "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"
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
   val StreamName = "TestStream"
 
