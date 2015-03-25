@@ -10,7 +10,7 @@ class RxKinesis(kclConfig: KinesisClientLibConfiguration) extends Logging {
   var recordProcessor = new KinesisRecordProcessor()
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
 
-  def getObservable: Observable[String] = Observable[String] {
+  def observable: Observable[String] = Observable[String] {
     subscriber => {
       Log.info(s"Subscribing: $subscriber, to stream: ${kclConfig.getStreamName}")
       recordProcessor.subscribe(subscriber)
