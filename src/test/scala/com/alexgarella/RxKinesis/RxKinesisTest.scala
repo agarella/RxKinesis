@@ -26,13 +26,13 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
   val AccessKeyId: String = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey: String = "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"
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
-  val StreamName = "15032015"
+  val StreamName = "TestStream"
 
-  feature("Reactive streaming from Kinesis") {
+  feature("reactive streaming from Kinesis") {
     val NumberOfElements = 10
     def isEven = (x: Int) => { x % 2 == 0 }
 
-    scenario(s"stream $NumberOfElements even numbers from Kinesis") {
+    scenario(s"streaming $NumberOfElements even numbers") {
       val buffer: ListBuffer[Int] = ListBuffer.empty
 
       def getObserver: Observer[Int] = new Observer[Int] {
@@ -40,9 +40,12 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
         override def onError(error: Throwable): Unit = println(error.getMessage)
       }
 
-      Given("an RxKinesis observable which filters even numbers")
+      Given("a Kinesis Observable which filters even numbers")
       val rxKinesis = new RxKinesis(getConfiguration)
-      val kinesisObservable = rxKinesis.getObservable.map(Integer.parseInt).filter(isEven).take(NumberOfElements)
+      val kinesisObservable = rxKinesis.observable
+          .map(Integer.parseInt)
+          .filter(isEven)
+          .take(NumberOfElements)
 
       And("an observer")
       val kinesisObserver = getObserver
@@ -62,8 +65,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
       And(s"the result list will have $NumberOfElements elements")
       assertResult(NumberOfElements)(buffer.size)
-
-      rxKinesis.stop()
     }
 
     scenario("composing two observables") {
@@ -76,8 +77,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       Given(s"a composition of two streams of which the sum is calculated")
       val rxKinesis = new RxKinesis(getConfiguration)
       val o = Observable.just(1, 2, 3, 4, 5)
-      val kinesisObservable =
-        rxKinesis.getObservable
+      val kinesisObservable = rxKinesis.observable
             .map(Integer.parseInt)
             .zipWith(o)((x, y) => x + y)
             .sum
@@ -97,8 +97,45 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
       Then(s"the result should be larger or equal to ${(1 to 5).sum}")
       assertResult(true)(result.headOption.getOrElse(-1) >= (1 to 5).sum)
+    }
 
-      rxKinesis.stop()
+    scenario("merging two observables") {
+      val result = ListBuffer.empty[Int]
+      def getObserver: Observer[Int] = new Observer[Int] {
+        override def onNext(value: Int): Unit = { result += value }
+        override def onError(error: Throwable): Unit = println(error.getMessage)
+      }
+
+      Given(s"a Kinesis observable which is merged with a stream of 5 1s")
+      val rxKinesis = new RxKinesis(getConfiguration)
+      val o = Observable.just(1, 1, 1, 1, 1)
+      val kinesisObservable = rxKinesis.observable
+            .map(Integer.parseInt)
+            .filter(_ != 1)
+            .merge(o)
+            .take(NumberOfElements)
+
+      And("an observer")
+      val kinesisObserver = getObserver
+
+      When("subscribing")
+      kinesisObservable.subscribe(kinesisObserver)
+
+      And("starting the stream")
+      Future { rxKinesis.stream() }
+
+      When("writing data to the Kinesis stream")
+      Future { writeToStream() }
+      Thread.sleep(30000)
+
+      Then(s"the result should contain $NumberOfElements elements")
+      assertResult(NumberOfElements)(result.size)
+
+      Then(s"the result should contain 5 1s")
+      assertResult(5)(result.count(_ == 1))
+
+      Then(s"the result should contain ${NumberOfElements - 5} elements which are different from 1 ")
+      assertResult(NumberOfElements - 5)(result.count(_ != 1))
     }
   }
 

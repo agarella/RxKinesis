@@ -9,7 +9,7 @@ import rx.lang.scala.Subscriber
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
-class RecordProcessor extends IRecordProcessor with Logging {
+class KinesisRecordProcessor extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
   val subscribers: ListBuffer[Subscriber[String]] = ListBuffer.empty
