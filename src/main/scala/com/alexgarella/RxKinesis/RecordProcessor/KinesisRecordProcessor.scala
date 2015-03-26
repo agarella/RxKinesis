@@ -24,33 +24,41 @@ import rx.lang.scala.Subscriber
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
-class KinesisRecordProcessor extends IRecordProcessor with Logging {
+class KinesisRecordProcessor[T](parse: Array[Byte] => T) extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
-  val subscribers: ListBuffer[Subscriber[String]] = ListBuffer.empty
+  val subscribers: ListBuffer[Subscriber[T]] = ListBuffer.empty
 
-  def subscribe(subscriber: Subscriber[String]): Unit = { subscribers += subscriber }
+  def subscribe(subscriber: Subscriber[T]): Unit = {
+    Log.info(s"Subscribing: $subscriber, to $this")
+    subscribers += subscriber
+  }
+
+  def unsubscribe(subscriber: Subscriber[T]) = {
+    Log.info(s"Unsubscribing: $subscriber from $this")
+    subscribers -= subscriber
+  }
 
   override def initialize(shardId: String): Unit = { kinesisShardID = shardId }
 
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
   override def processRecords(records: java.util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
-    def processRecord(record: Record): String = {
-      val data = new String(record.getData.array())
-      Log.info(s"Data: $data")
-      data
-    }
+    def getRecordData(record: Record): Array[Byte] = record.getData.array()
 
     val recordList = records.toList
-    subscribers.foreach { subscriber =>
+    subscribers.foreach { subscriber: Subscriber[T] =>
       recordList.foreach {
         record => {
+          val parsedRecord: T = parse(getRecordData(record))
           Log.info(s"SequenceNumber: ${record.getSequenceNumber}")
           Log.info(s"PartitionKey: ${record.getPartitionKey}")
-          subscriber.onNext(processRecord(record))
+          Log.info(s"Record Data: $parsedRecord")
+          subscriber.onNext(parsedRecord)
         }
       }
     }
   }
+
+  override def toString = s"KinesisRecordProcessor($kinesisShardID)"
 }
