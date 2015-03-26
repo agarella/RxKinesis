@@ -41,7 +41,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given("a Kinesis Observable which filters even numbers")
-      val rxKinesis = new RxKinesis(getConfiguration)
+      val rxKinesis = RxKinesis(getConfiguration)
       val kinesisObservable = rxKinesis.observable
           .map(Integer.parseInt)
           .filter(isEven)
@@ -75,7 +75,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given(s"a composition of two streams of which the sum is calculated")
-      val rxKinesis = new RxKinesis(getConfiguration)
+      val rxKinesis = RxKinesis(getConfiguration)
       val o = Observable.just(1, 2, 3, 4, 5)
       val kinesisObservable = rxKinesis.observable
             .map(Integer.parseInt)
@@ -107,7 +107,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given(s"a Kinesis observable which is merged with a stream of 5 1s")
-      val rxKinesis = new RxKinesis(getConfiguration)
+      val rxKinesis = RxKinesis(getConfiguration)
       val o = Observable.just(1, 1, 1, 1, 1)
       val kinesisObservable = rxKinesis.observable
             .map(Integer.parseInt)

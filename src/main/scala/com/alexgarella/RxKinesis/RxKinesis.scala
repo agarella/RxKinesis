@@ -24,3 +24,8 @@ class RxKinesis(kclConfig: KinesisClientLibConfiguration) extends Logging {
 
   def stop(): Unit = worker.shutdown()
 }
+
+object RxKinesis {
+
+  def apply(kclConfig: KinesisClientLibConfiguration) = new RxKinesis(kclConfig)
+}
