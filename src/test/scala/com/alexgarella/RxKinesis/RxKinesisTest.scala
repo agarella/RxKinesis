@@ -70,7 +70,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.startStream() }
+      Future { rxKinesis.start() }
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -82,7 +82,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       And(s"the result list will have $NumberOfElements elements")
       assertResult(NumberOfElements)(buffer.size)
 
-      rxKinesis.stopStream()
+      rxKinesis.stop()
     }
 
     scenario("composing two observables") {
@@ -106,7 +106,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.startStream() }
+      Future { rxKinesis.start() }
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -115,7 +115,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       Then(s"the result should be larger or equal to ${(1 to 5).sum}")
       assertResult(true)(result.headOption.getOrElse(-1) >= (1 to 5).sum)
 
-      rxKinesis.stopStream()
+      rxKinesis.stop()
     }
 
     scenario("merging two observables") {
@@ -125,7 +125,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
         override def onError(error: Throwable): Unit = println(error.getMessage)
       }
 
-      Given(s"a Kinesis observable which is merged with a startStream of 5 1s")
+      Given(s"a Kinesis observable which is merged with a stream of 5 1s")
       val rxKinesis = RxKinesis(getConfiguration, parser)
       val o = Observable.just(1, 1, 1, 1, 1)
       val kinesisObservable = rxKinesis.observable
@@ -140,7 +140,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.startStream() }
+      Future { rxKinesis.start() }
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -155,7 +155,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       Then(s"the result should contain ${NumberOfElements - 5} elements other than 1")
       assertResult(NumberOfElements - 5)(result.count(_ != 1))
 
-      rxKinesis.stopStream()
+      rxKinesis.stop()
     }
   }
 

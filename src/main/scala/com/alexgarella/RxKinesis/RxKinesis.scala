@@ -35,9 +35,9 @@ class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T
     unsubscribe
   }
 
-  def startStream(): Unit = worker.run()
+  def start(): Unit = worker.run()
 
-  def stopStream(): Unit = {
+  def stop(): Unit = {
     Log.info(s"Stopping: $this")
     worker.shutdown()
   }
