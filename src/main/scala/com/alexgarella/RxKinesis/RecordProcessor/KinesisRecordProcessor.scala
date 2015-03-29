@@ -24,7 +24,7 @@ import rx.lang.scala.Subscriber
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
-class KinesisRecordProcessor[T](parse: Array[Byte] => T) extends IRecordProcessor with Logging {
+class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor with Logging {
 
   var kinesisShardID: String = _
   val subscribers: ListBuffer[Subscriber[T]] = ListBuffer.empty
@@ -44,7 +44,7 @@ class KinesisRecordProcessor[T](parse: Array[Byte] => T) extends IRecordProcesso
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
   override def processRecords(records: java.util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
-    def getRecordData(record: Record): Array[Byte] = record.getData.array()
+    def getRecordData(record: Record): String = new String(record.getData.array())
 
     val recordList = records.toList
     subscribers.foreach { subscriber: Subscriber[T] =>
