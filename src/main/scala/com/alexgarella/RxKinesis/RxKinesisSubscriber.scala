@@ -20,7 +20,7 @@ import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{KinesisClientLibConfiguration, Worker}
 import rx.lang.scala.{Subscriber, Observable}
 
-class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) extends Logging {
+class RxKinesisSubscriber[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) extends Logging {
 
   var recordProcessor = new KinesisRecordProcessor[T](parser)
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
@@ -35,6 +35,7 @@ class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T
     unsubscribe
   }
 
+  // TODO Make non-blocking?
   def start(): Unit = worker.run()
 
   def stop(): Unit = {
@@ -46,10 +47,10 @@ class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T
     recordProcessor.unsubscribe(s)
   }
 
-  override def toString = s"RxKinesis(${kclConfig.getStreamName}, ${kclConfig.getApplicationName})"
+  override def toString = s"RxKinesisSubscriber(${kclConfig.getStreamName}, ${kclConfig.getApplicationName})"
 }
 
-object RxKinesis {
+object RxKinesisSubscriber {
 
-  def apply[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) = new RxKinesis(kclConfig, parser)
+  def apply[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) = new RxKinesisSubscriber(kclConfig, parser)
 }

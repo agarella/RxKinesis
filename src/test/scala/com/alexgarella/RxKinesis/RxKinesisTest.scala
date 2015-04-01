@@ -13,6 +13,7 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
+
 package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
@@ -43,8 +44,12 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
   val StreamName = "TestStream"
 
+  val Date = DateTimeFormat.forPattern("yyyyMMdd").print(new DateTime())
+
   def parser = (s: String) => Integer.parseInt(s)
 
+
+  //TODO clean up. Pull out duplicate code e.g. getObserver
   feature("reactive streaming from Kinesis") {
     val NumberOfElements = 10
     def isEven = (x: Int) => { x % 2 == 0 }
@@ -58,7 +63,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given("a Kinesis Observable which filters even numbers")
-      val rxKinesis = RxKinesis(getConfiguration, parser)
+      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
       val kinesisObservable = rxKinesis.observable
           .filter(isEven)
           .take(NumberOfElements)
@@ -93,7 +98,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given(s"a composition of two streams of which the sum is calculated")
-      val rxKinesis = RxKinesis(getConfiguration, parser)
+      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
       val o = Observable.just(1, 2, 3, 4, 5)
       val kinesisObservable = rxKinesis.observable
             .zipWith(o)((x, y) => x + y)
@@ -126,7 +131,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       }
 
       Given(s"a Kinesis observable which is merged with a stream of 5 1s")
-      val rxKinesis = RxKinesis(getConfiguration, parser)
+      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
       val o = Observable.just(1, 1, 1, 1, 1)
       val kinesisObservable = rxKinesis.observable
             .filter(_ != 1)
@@ -159,9 +164,32 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     }
   }
 
+  //TODO Clean up
+  feature("reactive streaming to Amazon Kinesis") {
+    val result = ListBuffer.empty[Int]
+    def getObserver: Observer[Int] = new Observer[Int] {
+      override def onNext(value: Int): Unit = { result += value }
+      override def onError(error: Throwable): Unit = println(error.getMessage)
+    }
+    val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
+    rxKinesis.observable.subscribe(getObserver)
+
+    Future { rxKinesis.start() }
+    Thread.sleep(25000)
+
+    val config = RxKinesisObservableConfig(StreamName, profileCredentialsProviderMock, s"RxKinesisTest$Date", EndPoint, "1")
+    val kinesisObservable = RxKinesisPublisher(config, (x: Int) => x.toString)
+    kinesisObservable.observeOn(Observable.just(1, 2, 3, 4, 5))
+    Thread.sleep(2000)
+
+    assertResult(List(1, 2, 3, 4, 5))(result.toList)
+
+    rxKinesis.stop()
+  }
+
   def writeToStream(): Unit = {
     Thread.sleep(20000)
-    val client = new AmazonKinesisClient(mockProfileCredentialsProvider)
+    val client = new AmazonKinesisClient(profileCredentialsProviderMock)
     client.setEndpoint(EndPoint, "kinesis", Region.EU_Frankfurt.toString)
 
     while (true) {
@@ -177,14 +205,13 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
   def getConfiguration: KinesisClientLibConfiguration = {
     val workerId = UUID.randomUUID().toString
-    val date = DateTimeFormat.forPattern("yyyyMMdd").print(new DateTime())
-    val config = new KinesisClientLibConfiguration(s"RxKinesisTest$date", StreamName,
-      mockProfileCredentialsProvider, workerId)
+    val config = new KinesisClientLibConfiguration(s"RxKinesisTest$Date", StreamName,
+      profileCredentialsProviderMock, workerId)
     config.withRegionName(Region.EU_Frankfurt.toString)
     config.withInitialPositionInStream(InitialPositionInStream.LATEST)
   }
 
-  def mockProfileCredentialsProvider: ProfileCredentialsProvider = {
+  def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)
     val profileCredentialsProvider = mock[ProfileCredentialsProvider]
     doReturn(basicAWSCredentials).when(profileCredentialsProvider).getCredentials
