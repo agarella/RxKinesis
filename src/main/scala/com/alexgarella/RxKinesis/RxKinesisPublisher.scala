@@ -27,7 +27,7 @@ import rx.lang.scala.{Observable, Observer}
  * Publish data to an Amazon Kinesis stream.
  *
  * @param config Amazon Kinesis configuration
- * @param unparse function to unparse the data to a string so that it can be published to the Kinesis stream
+ * @param unparse function to unparse the data to publish
  * @tparam T type of the data
  */
 class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String) extends Logging {
