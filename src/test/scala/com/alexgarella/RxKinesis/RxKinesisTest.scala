@@ -13,23 +13,21 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-
 package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
-import java.util.UUID
 
+import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, SubscriberConfiguration}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.AmazonKinesisClient
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionInStream, KinesisClientLibConfiguration}
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream
 import com.amazonaws.services.kinesis.model.PutRecordRequest
-import com.amazonaws.services.s3.model.Region
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{FeatureSpec, GivenWhenThen}
+import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
 import rx.lang.scala.{Observable, Observer}
 
 import scala.collection.mutable.ListBuffer
@@ -37,7 +35,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
 
-class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
+class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
 
   val AccessKeyId = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey = "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"
@@ -48,6 +46,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
   def parser = (s: String) => Integer.parseInt(s)
 
+  var buffer: ListBuffer[Int] = ListBuffer.empty
 
   //TODO clean up. Pull out duplicate code e.g. getObserver
   feature("reactive streaming from Kinesis") {
@@ -55,15 +54,10 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     def isEven = (x: Int) => { x % 2 == 0 }
 
     scenario(s"streaming $NumberOfElements even numbers") {
-      val buffer: ListBuffer[Int] = ListBuffer.empty
-
-      def getObserver: Observer[Int] = new Observer[Int] {
-        override def onNext(value: Int): Unit = buffer += value
-        override def onError(error: Throwable): Unit = println(error.getMessage)
-      }
-
       Given("a Kinesis Observable which filters even numbers")
-      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
+      buffer = ListBuffer.empty
+
+      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
       val kinesisObservable = rxKinesis.observable
           .filter(isEven)
           .take(NumberOfElements)
@@ -75,7 +69,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.start() }
+      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -91,14 +85,10 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     }
 
     scenario("composing two observables") {
-      val result = ListBuffer.empty[Int]
-      def getObserver: Observer[Int] = new Observer[Int] {
-        override def onNext(value: Int): Unit = { result += value }
-        override def onError(error: Throwable): Unit = println(error.getMessage)
-      }
+      buffer = ListBuffer.empty
 
       Given(s"a composition of two streams of which the sum is calculated")
-      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
+      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
       val o = Observable.just(1, 2, 3, 4, 5)
       val kinesisObservable = rxKinesis.observable
             .zipWith(o)((x, y) => x + y)
@@ -111,27 +101,23 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.start() }
+      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
       Thread.sleep(30000)
 
       Then(s"the result should be larger or equal to ${(1 to 5).sum}")
-      assertResult(true)(result.headOption.getOrElse(-1) >= (1 to 5).sum)
+      assertResult(true)(buffer.headOption.getOrElse(-1) >= (1 to 5).sum)
 
       rxKinesis.stop()
     }
 
     scenario("merging two observables") {
-      val result = ListBuffer.empty[Int]
-      def getObserver: Observer[Int] = new Observer[Int] {
-        override def onNext(value: Int): Unit = { result += value }
-        override def onError(error: Throwable): Unit = println(error.getMessage)
-      }
+      buffer = ListBuffer.empty
 
       Given(s"a Kinesis observable which is merged with a stream of 5 1s")
-      val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
+      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
       val o = Observable.just(1, 1, 1, 1, 1)
       val kinesisObservable = rxKinesis.observable
             .filter(_ != 1)
@@ -145,20 +131,20 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      Future { rxKinesis.start() }
+      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
       Thread.sleep(30000)
 
       Then(s"the result should contain $NumberOfElements elements")
-      assertResult(NumberOfElements)(result.size)
+      assertResult(NumberOfElements)(buffer.size)
 
       Then(s"the result should contain 5 1s")
-      assertResult(5)(result.count(_ == 1))
+      assertResult(5)(buffer.count(_ == 1))
 
       Then(s"the result should contain ${NumberOfElements - 5} elements other than 1")
-      assertResult(NumberOfElements - 5)(result.count(_ != 1))
+      assertResult(NumberOfElements - 5)(buffer.count(_ != 1))
 
       rxKinesis.stop()
     }
@@ -166,31 +152,31 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
   //TODO Clean up
   feature("reactive streaming to Amazon Kinesis") {
-    val result = ListBuffer.empty[Int]
-    def getObserver: Observer[Int] = new Observer[Int] {
-      override def onNext(value: Int): Unit = { result += value }
-      override def onError(error: Throwable): Unit = println(error.getMessage)
-    }
-    val rxKinesis = RxKinesisSubscriber(getConfiguration, parser)
+    buffer = ListBuffer.empty
+
+    val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
     rxKinesis.observable.subscribe(getObserver)
 
-    Future { rxKinesis.start() }
+    rxKinesis.startAsync()
     Thread.sleep(25000)
 
-    val config = RxKinesisObservableConfig(StreamName, profileCredentialsProviderMock, s"RxKinesisTest$Date", EndPoint, "1")
-    val kinesisObservable = RxKinesisPublisher(config, (x: Int) => x.toString)
-    kinesisObservable.observeOn(Observable.just(1, 2, 3, 4, 5))
+    val config = ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
+    RxKinesisPublisher(config, (x: Int) => x.toString).publish(Observable.just(1, 2, 3, 4, 5))
     Thread.sleep(2000)
 
-    assertResult(List(1, 2, 3, 4, 5))(result.toList)
+    assertResult(List(1, 2, 3, 4, 5))(buffer.toList)
 
     rxKinesis.stop()
   }
 
+  def getObserver: Observer[Int] = new Observer[Int] {
+    override def onNext(value: Int): Unit = buffer += value
+    override def onError(error: Throwable): Unit = println(error.getMessage)
+  }
+
   def writeToStream(): Unit = {
     Thread.sleep(20000)
-    val client = new AmazonKinesisClient(profileCredentialsProviderMock)
-    client.setEndpoint(EndPoint, "kinesis", Region.EU_Frankfurt.toString)
+    val client: AmazonKinesisClient = new AmazonKinesisClient(profileCredentialsProviderMock).withEndpoint(EndPoint)
 
     while (true) {
       val putRecordRequest = new PutRecordRequest
@@ -203,13 +189,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
     }
   }
 
-  def getConfiguration: KinesisClientLibConfiguration = {
-    val workerId = UUID.randomUUID().toString
-    val config = new KinesisClientLibConfiguration(s"RxKinesisTest$Date", StreamName,
-      profileCredentialsProviderMock, workerId)
-    config.withRegionName(Region.EU_Frankfurt.toString)
-    config.withInitialPositionInStream(InitialPositionInStream.LATEST)
-  }
+  def getConfiguration: SubscriberConfiguration =
+    SubscriberConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)
