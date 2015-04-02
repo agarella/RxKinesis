@@ -37,7 +37,8 @@ class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String)
         .withEndpoint(config.endPoint)
 
   def publish(observable: Observable[T]): Unit = {
-    def onNext(value: T): Unit = {
+    //TODO Fix ugly type annotations
+    val onNext: (T => Unit) = value => {
       val v: String = unparse(value)
 
       val putRecordRequest = new PutRecordRequest
@@ -49,15 +50,15 @@ class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String)
       amazonKinesisClient.putRecord(putRecordRequest)
     }
 
-    def onError(error: Throwable): Unit = Log.error(error.getMessage)
+    val onError: (Throwable => Unit) = error => Log.error(error.getMessage)
 
-    def onCompleted(): Unit = Log.info(s"$this completed")
+    val onCompleted: (() => Unit) = () => Log.info(s"$this completed")
 
     observable.subscribe(
       Observer[T] (
-        x => onNext(x),
-        e => onError(e),
-        () => onCompleted())
+        onNext,
+        onError,
+        onCompleted)
       )
   }
 
