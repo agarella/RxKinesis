@@ -16,12 +16,18 @@
 package com.alexgarella.RxKinesis
 
 import com.alexgarella.RxKinesis.RecordProcessor.{KinesisRecordProcessor, RecordProcessorFactory}
+import com.alexgarella.RxKinesis.configuration.Configuration
+import com.alexgarella.RxKinesis.configuration.Configuration.SubscriberConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{KinesisClientLibConfiguration, Worker}
-import rx.lang.scala.{Subscriber, Observable}
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker
+import rx.lang.scala.{Observable, Subscriber}
 
-class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) extends Logging {
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
+class RxKinesisConsumer[T](config: SubscriberConfiguration, parser: String => T) extends Logging {
+
+  val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   var recordProcessor = new KinesisRecordProcessor[T](parser)
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
 
@@ -37,7 +43,14 @@ class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T
 
   def start(): Unit = worker.run()
 
+  def startAsync(): Future[Unit] = Future { worker.run() }
+
   def stop(): Unit = {
+    Log.info(s"Stopping: $this")
+    worker.shutdown()
+  }
+
+  def stopAsync(): Future[Unit] = Future {
     Log.info(s"Stopping: $this")
     worker.shutdown()
   }
@@ -46,10 +59,10 @@ class RxKinesis[T](kclConfig: KinesisClientLibConfiguration, parser: String => T
     recordProcessor.unsubscribe(s)
   }
 
-  override def toString = s"RxKinesis(${kclConfig.getStreamName}, ${kclConfig.getApplicationName})"
+  override def toString = s"RxKinesisConsumer(${kclConfig.getStreamName}, ${kclConfig.getApplicationName})"
 }
 
-object RxKinesis {
+object RxKinesisConsumer {
 
-  def apply[T](kclConfig: KinesisClientLibConfiguration, parser: String => T) = new RxKinesis(kclConfig, parser)
+  def apply[T](config: SubscriberConfiguration, parser: String => T) = new RxKinesisConsumer(config, parser)
 }
