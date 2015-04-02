@@ -17,42 +17,55 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
+import com.alexgarella.RxKinesis.configuration.Configuration.ConsumerConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.services.kinesis.AmazonKinesisClient
+import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
 import com.amazonaws.services.kinesis.model.PutRecordRequest
 import rx.lang.scala.{Observable, Observer}
 
-//TODO is parse T => String the right thing to use?
-class RxKinesisPublisher[T](config: RxKinesisObservableConfig, parse: T => String) extends Logging {
+/**
+ * Publish data to an Amazon Kinesis stream.
+ *
+ * @param config Amazon Kinesis configuration
+ * @param unparse function to unparse the data to a string so that it can be published to the Kinesis stream
+ * @tparam T type of the data
+ */
+class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String) extends Logging {
 
-  //TODO remove ugly type param
-  val amazonKinesisClient = new AmazonKinesisClient(config.credentialsProvider).withEndpoint[AmazonKinesisClient](config.endPoint)
+  val amazonKinesisClient: AmazonKinesisAsyncClient =
+    new AmazonKinesisAsyncClient(config.credentialsProvider)
+        .withEndpoint(config.endPoint)
 
-  def observeOn(observable: Observable[T]) = {
-    observable.subscribe {
-      Observer[T](value => onNext(value), error => onError(error), () => Log.info("Completed!"))
+  def publish(observable: Observable[T]): Unit = {
+    def onNext(value: T): Unit = {
+      val v: String = unparse(value)
+
+      val putRecordRequest = new PutRecordRequest
+      putRecordRequest.setStreamName(config.streamName)
+      putRecordRequest.setData(ByteBuffer.wrap(v.getBytes))
+      putRecordRequest.setPartitionKey(config.partitionKey)
+
+      Log.info(s"Publishing value: $v, to $this")
+      amazonKinesisClient.putRecord(putRecordRequest)
     }
+
+    def onError(error: Throwable): Unit = Log.error(error.getMessage)
+
+    def onCompleted(): Unit = Log.info(s"$this completed")
+
+    observable.subscribe(
+      Observer[T] (
+        x => onNext(x),
+        e => onError(e),
+        () => onCompleted())
+      )
   }
 
-  //TODO add logging
-  private def onNext(value: T): Unit = {
-    val putRecordRequest = new PutRecordRequest
-    putRecordRequest.setStreamName(config.streamName)
-    putRecordRequest.setData(ByteBuffer.wrap(parse(value).getBytes))
-    putRecordRequest.setPartitionKey(config.partitionKey)
-    amazonKinesisClient.putRecord(putRecordRequest)
-  }
-
-  private def onError(error: Throwable): Unit = Log.error(error.getMessage)
-
+  override def toString: String =
+    s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.endPoint}, ${config.partitionKey}})"
 }
 
-object RxKinesisPublisher{
+object RxKinesisPublisher {
 
-  def apply[T](config: RxKinesisObservableConfig, parser: T => String) = new RxKinesisPublisher(config, parser)
+  def apply[T](config: ConsumerConfiguration, unparser: T => String) = new RxKinesisPublisher(config, unparser)
 }
-
-//TODO right region import? Right credentials provider?
-sealed case class RxKinesisObservableConfig(streamName: String, credentialsProvider: ProfileCredentialsProvider,
-                                            applicationName: String, endPoint: String, partitionKey: String)
