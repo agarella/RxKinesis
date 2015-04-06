@@ -17,7 +17,7 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
-import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, SubscriberConfiguration}
+import com.alexgarella.RxKinesis.configuration.Configuration.{PublisherConfiguration, ConsumerConfiguration}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.AmazonKinesisClient
@@ -42,7 +42,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
   val EndPoint = "kinesis.eu-central-1.amazonaws.com"
   val StreamName = "TestStream"
 
-  val Date = DateTimeFormat.forPattern("yyyyMMdd").print(new DateTime())
+  val Date = DateTimeFormat.forPattern("yyyyMMddmm").print(new DateTime())
 
   def parser = (s: String) => Integer.parseInt(s)
 
@@ -57,7 +57,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       Given("a Kinesis Observable which filters even numbers")
       buffer = ListBuffer.empty
 
-      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
+      val rxKinesis = RxKinesisConsumer(parser, consumerConfig)
       val kinesisObservable = rxKinesis.observable
           .filter(isEven)
           .take(NumberOfElements)
@@ -88,7 +88,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       buffer = ListBuffer.empty
 
       Given(s"a composition of two streams of which the sum is calculated")
-      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
+      val rxKinesis = RxKinesisConsumer(parser, consumerConfig)
       val o = Observable.just(1, 2, 3, 4, 5)
       val kinesisObservable = rxKinesis.observable
             .zipWith(o)((x, y) => x + y)
@@ -117,7 +117,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       buffer = ListBuffer.empty
 
       Given(s"a Kinesis observable which is merged with a stream of 5 1s")
-      val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
+      val rxKinesis = RxKinesisConsumer(parser, consumerConfig)
       val o = Observable.just(1, 1, 1, 1, 1)
       val kinesisObservable = rxKinesis.observable
             .filter(_ != 1)
@@ -154,15 +154,15 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
   feature("reactive streaming to Amazon Kinesis") {
     buffer = ListBuffer.empty
 
-    val rxKinesis = RxKinesisConsumer(getConfiguration, parser)
+    val rxKinesis = RxKinesisConsumer(parser, consumerConfig)
     rxKinesis.observable.subscribe(getObserver)
 
     rxKinesis.startAsync()
     Thread.sleep(25000)
 
-    val config = ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
-    RxKinesisPublisher(config, (x: Int) => x.toString).publish(Observable.just(1, 2, 3, 4, 5))
-    Thread.sleep(2000)
+    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
+    RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
+    Thread.sleep(3000)
 
     assertResult(List(1, 2, 3, 4, 5))(buffer.toList)
 
@@ -189,8 +189,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     }
   }
 
-  def getConfiguration: SubscriberConfiguration =
-    SubscriberConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
+  def consumerConfig: ConsumerConfiguration =
+    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)

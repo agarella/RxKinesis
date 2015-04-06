@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
 
 class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor with Logging {
 
-  var kinesisShardID: String = _
+  var kinesisShardID: Option[String] = None
   val subscribers: ListBuffer[Subscriber[T]] = ListBuffer.empty
 
   def subscribe(subscriber: Subscriber[T]): Unit = {
@@ -34,17 +34,14 @@ class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor wit
     subscribers += subscriber
   }
 
-  def unsubscribe(subscriber: Subscriber[T]) = {
-    Log.info(s"Unsubscribing: $subscriber from $this")
-    subscribers -= subscriber
-  }
-
-  override def initialize(shardId: String): Unit = { kinesisShardID = shardId }
+  override def initialize(shardId: String): Unit = { kinesisShardID = Option(shardId) }
 
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
   override def processRecords(records: java.util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     def getRecordData(record: Record): String = new String(record.getData.array())
+
+    updateSubscribers()
 
     val recordList = records.toList
     subscribers.foreach { subscriber: Subscriber[T] =>
@@ -58,6 +55,13 @@ class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor wit
         }
       }
     }
+  }
+
+  /**
+   * Remove subscribers which have unsubscribed from the stream
+   */
+  private def updateSubscribers(): Unit = {
+    subscribers --= subscribers.filter(_.isUnsubscribed)
   }
 
   override def toString = s"KinesisRecordProcessor($kinesisShardID)"
