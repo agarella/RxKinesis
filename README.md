@@ -1,2 +1,2 @@
 # RxKinesis
-Create Rx bindings for Amazon Kinesis.
+Rx bindings for Amazon Kinesis
