@@ -17,7 +17,7 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
-import com.alexgarella.RxKinesis.configuration.Configuration.ConsumerConfiguration
+import com.alexgarella.RxKinesis.configuration.Configuration.PublisherConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
 import com.amazonaws.services.kinesis.model.PutRecordRequest
@@ -30,7 +30,7 @@ import rx.lang.scala.{Observable, Observer}
  * @param unparse function to unparse the data to publish
  * @tparam T type of the data
  */
-class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String) extends Logging {
+class RxKinesisPublisher[T](config: PublisherConfiguration, unparse: T => String) extends Logging {
 
   val amazonKinesisClient: AmazonKinesisAsyncClient =
     new AmazonKinesisAsyncClient(config.credentialsProvider)
@@ -63,10 +63,10 @@ class RxKinesisPublisher[T](config: ConsumerConfiguration, unparse: T => String)
   }
 
   override def toString: String =
-    s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.endPoint}, ${config.partitionKey}})"
+    s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.applicationName}, ${config.partitionKey}})"
 }
 
 object RxKinesisPublisher {
 
-  def apply[T](config: ConsumerConfiguration, unparser: T => String) = new RxKinesisPublisher(config, unparser)
+  def apply[T](config: PublisherConfiguration, unparser: T => String) = new RxKinesisPublisher(config, unparser)
 }

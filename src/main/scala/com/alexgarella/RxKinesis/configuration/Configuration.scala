@@ -25,7 +25,7 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionI
  */
 object Configuration {
 
-  case class ConsumerConfiguration(
+  case class PublisherConfiguration(
                                        credentialsProvider: AWSCredentialsProvider,
                                        streamName: String,
                                        endPoint: String,
@@ -33,14 +33,14 @@ object Configuration {
                                        partitionKey: String)
 
 
-  case class SubscriberConfiguration(
+  case class ConsumerConfiguration(
                                         credentialsProvider: AWSCredentialsProvider,
                                         streamName: String,
                                         endPoint: String,
                                         applicationName: String,
                                         initialPositionInStream: InitialPositionInStream)
 
-  def toKinesisClientLibConfiguration(config: SubscriberConfiguration): KinesisClientLibConfiguration = {
+  def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration = {
     val workerId = UUID.randomUUID().toString
     new KinesisClientLibConfiguration(config.applicationName, config.streamName, config.credentialsProvider, workerId)
         .withKinesisEndpoint(config.endPoint)

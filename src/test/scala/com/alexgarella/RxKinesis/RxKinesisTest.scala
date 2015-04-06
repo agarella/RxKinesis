@@ -17,7 +17,7 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
-import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, SubscriberConfiguration}
+import com.alexgarella.RxKinesis.configuration.Configuration.{PublisherConfiguration, ConsumerConfiguration}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.AmazonKinesisClient
@@ -160,7 +160,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     rxKinesis.startAsync()
     Thread.sleep(25000)
 
-    val config = ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
+    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
     RxKinesisPublisher(config, (x: Int) => x.toString).publish(Observable.just(1, 2, 3, 4, 5))
     Thread.sleep(2000)
 
@@ -189,8 +189,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     }
   }
 
-  def getConfiguration: SubscriberConfiguration =
-    SubscriberConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
+  def getConfiguration: ConsumerConfiguration =
+    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)

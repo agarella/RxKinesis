@@ -17,7 +17,7 @@ package com.alexgarella.RxKinesis
 
 import com.alexgarella.RxKinesis.RecordProcessor.{KinesisRecordProcessor, RecordProcessorFactory}
 import com.alexgarella.RxKinesis.configuration.Configuration
-import com.alexgarella.RxKinesis.configuration.Configuration.SubscriberConfiguration
+import com.alexgarella.RxKinesis.configuration.Configuration.ConsumerConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker
 import rx.lang.scala.{Observable, Subscriber}
@@ -25,7 +25,7 @@ import rx.lang.scala.{Observable, Subscriber}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class RxKinesisConsumer[T](config: SubscriberConfiguration, parser: String => T) extends Logging {
+class RxKinesisConsumer[T](config: ConsumerConfiguration, parser: String => T) extends Logging {
 
   val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   var recordProcessor = new KinesisRecordProcessor[T](parser)
@@ -59,10 +59,10 @@ class RxKinesisConsumer[T](config: SubscriberConfiguration, parser: String => T)
     recordProcessor.unsubscribe(s)
   }
 
-  override def toString = s"RxKinesisConsumer(${kclConfig.getStreamName}, ${kclConfig.getApplicationName})"
+  override def toString = s"RxKinesisConsumer(${config.streamName}, ${config.streamName}, ${config.applicationName})"
 }
 
 object RxKinesisConsumer {
 
-  def apply[T](config: SubscriberConfiguration, parser: String => T) = new RxKinesisConsumer(config, parser)
+  def apply[T](config: ConsumerConfiguration, parser: String => T) = new RxKinesisConsumer(config, parser)
 }
