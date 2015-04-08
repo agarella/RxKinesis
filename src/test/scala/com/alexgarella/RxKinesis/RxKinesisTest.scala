@@ -33,7 +33,7 @@ import rx.lang.scala.{Observable, Observer}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Random
+import scala.util.{Try, Random}
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
 
@@ -44,11 +44,11 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
   val Date = DateTimeFormat.forPattern("yyyyMMddmm").print(new DateTime())
 
-  def parser = (s: String) => Integer.parseInt(s)
+  def parser = (s: String) => Try { Integer.parseInt(s) }
 
   var buffer: ListBuffer[Int] = ListBuffer.empty
 
-  //TODO clean up. Pull out duplicate code e.g. getObserver
+  //TODO Add non happy flow tests
   feature("reactive streaming from Kinesis") {
     val NumberOfElements = 10
     def isEven = (x: Int) => { x % 2 == 0 }
@@ -150,7 +150,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     }
   }
 
-  //TODO Clean up
+  //TODO convert to Given, When, Then style
   feature("reactive streaming to Amazon Kinesis") {
     buffer = ListBuffer.empty
 
@@ -161,7 +161,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     Thread.sleep(25000)
 
     val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
-    RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
+    RxKinesisPublisher((x: Int) => Try(x.toString), Observable.just(1, 2, 3, 4, 5), config)
     Thread.sleep(3000)
 
     assertResult(List(1, 2, 3, 4, 5))(buffer.toList)
