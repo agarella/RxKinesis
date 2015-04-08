@@ -34,11 +34,11 @@ object Configuration {
 
 
   case class ConsumerConfiguration(
-                                        credentialsProvider: AWSCredentialsProvider,
-                                        streamName: String,
-                                        endPoint: String,
-                                        applicationName: String,
-                                        initialPositionInStream: InitialPositionInStream)
+                                      credentialsProvider: AWSCredentialsProvider,
+                                      streamName: String,
+                                      endPoint: String,
+                                      applicationName: String,
+                                      initialPositionInStream: InitialPositionInStream)
 
   def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration = {
     val workerId = UUID.randomUUID().toString
