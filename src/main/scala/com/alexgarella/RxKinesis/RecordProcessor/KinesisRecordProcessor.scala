@@ -23,8 +23,9 @@ import rx.lang.scala.Subscriber
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
+import scala.util.{Failure, Success, Try}
 
-class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor with Logging {
+class KinesisRecordProcessor[T](parse: String => Try[T]) extends IRecordProcessor with Logging {
 
   var kinesisShardID: Option[String] = None
   val subscribers: ListBuffer[Subscriber[T]] = ListBuffer.empty
@@ -34,7 +35,9 @@ class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor wit
     subscribers += subscriber
   }
 
-  override def initialize(shardId: String): Unit = { kinesisShardID = Option(shardId) }
+  override def initialize(shardId: String): Unit = {
+    kinesisShardID = Option(shardId)
+  }
 
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
@@ -43,16 +46,19 @@ class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor wit
 
     updateSubscribers()
 
-    val recordList = records.toList
-    subscribers.foreach { subscriber: Subscriber[T] =>
-      recordList.foreach {
-        record => {
-          val parsedRecord: T = parse(getRecordData(record))
+    for {
+      subscriber <- subscribers
+      record <- records
+    } yield {
+      parse(getRecordData(record)) match {
+        case Success(parsedRecord) =>
           Log.info(s"SequenceNumber: ${record.getSequenceNumber}")
           Log.info(s"PartitionKey: ${record.getPartitionKey}")
           Log.info(s"Record Data: $parsedRecord")
           subscriber.onNext(parsedRecord)
-        }
+        case Failure(f) =>
+          Log.error(s"Failed parsing data")
+          Log.error(f)
       }
     }
   }
