@@ -34,17 +34,15 @@ object Configuration {
 
 
   case class ConsumerConfiguration(
-                                        credentialsProvider: AWSCredentialsProvider,
-                                        streamName: String,
-                                        endPoint: String,
-                                        applicationName: String,
-                                        initialPositionInStream: InitialPositionInStream)
+                                      credentialsProvider: AWSCredentialsProvider,
+                                      streamName: String,
+                                      endPoint: String,
+                                      applicationName: String,
+                                      initialPositionInStream: InitialPositionInStream)
 
-  def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration = {
-    val workerId = UUID.randomUUID().toString
-    new KinesisClientLibConfiguration(config.applicationName, config.streamName, config.credentialsProvider, workerId)
+  def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration =
+    new KinesisClientLibConfiguration(config.applicationName, config.streamName, config.credentialsProvider, UUID.randomUUID().toString)
         .withKinesisEndpoint(config.endPoint)
         .withInitialPositionInStream(config.initialPositionInStream)
-  }
 
 }

@@ -24,6 +24,7 @@ import rx.lang.scala.{Observable, Subscriber}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Try
 
 /**
  * Consume data from an Amazon Kinesis stream.
@@ -32,7 +33,7 @@ import scala.concurrent.Future
  * @param config consumer configuration
  * @tparam T type of the data
  */
-class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
+class RxKinesisConsumer[T](parser: String => Try[T], config: ConsumerConfiguration) extends Logging {
 
   val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   var recordProcessor = new KinesisRecordProcessor[T](parser)
@@ -44,17 +45,24 @@ class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) e
     }
   }
 
-  def start(): Unit = worker.run()
+  def start(): Unit = startStream()
 
-  def startAsync(): Future[Unit] = Future { worker.run() }
+  def startAsync(): Future[Unit] = Future { startStream() }
 
   def stop(): Unit = stopStream()
 
   def stopAsync(): Future[Unit] = Future { stopStream() }
 
+  private def startStream(): Unit = {
+    Log.info(s"Starting: $this")
+    worker.run()
+    Log.info(s"Started: $this")
+  }
+
   private def stopStream(): Unit = {
     Log.info(s"Stopping: $this")
     worker.shutdown()
+    Log.info(s"Stopped: $this")
   }
 
   override def toString = s"RxKinesisConsumer(${config.streamName}, ${config.endPoint}, ${config.applicationName})"
@@ -62,5 +70,5 @@ class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) e
 
 object RxKinesisConsumer {
 
-  def apply[T](parser: String => T, config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
+  def apply[T](parser: String => Try[T], config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
 }
