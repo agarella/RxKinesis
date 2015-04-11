@@ -69,7 +69,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -101,7 +100,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -131,7 +129,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
       kinesisObservable.subscribe(kinesisObserver)
 
       And("starting the stream")
-      rxKinesis.startAsync()
 
       When("writing data to the Kinesis stream")
       Future { writeToStream() }
@@ -156,9 +153,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
     val rxKinesis = RxKinesisConsumer(parser, consumerConfig)
     rxKinesis.observable.subscribe(getObserver)
-
-    rxKinesis.startAsync()
-    Thread.sleep(25000)
+    Thread.sleep(30000)
 
     val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
     RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)

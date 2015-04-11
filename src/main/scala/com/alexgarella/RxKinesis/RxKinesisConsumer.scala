@@ -36,16 +36,14 @@ import scala.concurrent.Future
 //TODO Parametrize Subject depending on the Configuration?
 class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
 
-  val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   val subject = Subject[T]()
+
+  val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   val recordProcessor: KinesisRecordProcessor[T] = new KinesisRecordProcessor(parser, subject)
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
+  Future { startStream() }
 
   def observable: Observable[T] = subject
-
-  def start(): Unit = startStream()
-
-  def startAsync(): Future[Unit] = Future { startStream() }
 
   def stop(): Unit = stopStream()
 
@@ -69,4 +67,6 @@ class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) e
 object RxKinesisConsumer {
 
   def apply[T](parser: String => T, config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
+
+  def apply(config: ConsumerConfiguration) = new RxKinesisConsumer((x: String) => x, config)
 }

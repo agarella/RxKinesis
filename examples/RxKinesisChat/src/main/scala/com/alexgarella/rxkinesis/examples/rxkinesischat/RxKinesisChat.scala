@@ -26,43 +26,53 @@ import rx.lang.scala.{Observer, Subject}
 
 import scala.io.StdIn
 
+/**
+ * Simple command line chat application built with RxKinesis
+ */
 object RxKinesisChat extends App {
 
   override def main (args: Array[String]) {
+    // Stream settings
     val EndPoint = "kinesis.eu-central-1.amazonaws.com"
     val ApplicationName = s"${UUID.randomUUID()}"
-    val MyID = UUID.randomUUID().toString
-    val IDLength = MyID.length
+    val Credentials = new ProfileCredentialsProvider()
+    val StreamName = "TestStream"
+    val publisherConfig = PublisherConfiguration(Credentials, StreamName, EndPoint, ApplicationName, "1")
+    val consumerConfig = ConsumerConfiguration(Credentials, StreamName, EndPoint, ApplicationName, InitialPositionInStream.LATEST)
 
-    val publisherConfig = PublisherConfiguration(new ProfileCredentialsProvider(), "TestStream", EndPoint, ApplicationName, "1")
-    val consumerConfig = ConsumerConfiguration(new ProfileCredentialsProvider(), "TestStream", EndPoint, ApplicationName,
-    InitialPositionInStream.LATEST)
-
-    val rxKinesisConsumer = new RxKinesisConsumer((s: String) => s, consumerConfig)
-    rxKinesisConsumer.startAsync()
+    // Start the consumer and wait a while for the start up process to finish
+    val rxKinesisConsumer = RxKinesisConsumer((x: String) => x, consumerConfig)
     Thread.sleep(20000)
 
+    // Publish the observable which will be used to send chat messages
     val rxKinesisObservable = Subject[String] ()
-    RxKinesisPublisher((s: String) => s, rxKinesisObservable, publisherConfig)
+    RxKinesisPublisher((x: String) => x, rxKinesisObservable, publisherConfig)
 
     println("Welcome to RxKinesisChat!")
     println("Enter your user name:")
-    val userName = StdIn.readLine()
 
+    // User settings
+    val userName = StdIn.readLine()
+    val MyID = UUID.randomUUID().toString // Prefix each message with a UUID to distinguish users
+    val IDLength = MyID.length
+
+    // Print the received chat messages of other users
     val o = new Observer[String] {
       override def onNext(value: String): Unit = {
+        // Only print messages originating from other users
         if (MyID != value.take(IDLength)) println(s"${value.drop(IDLength)}")
       }
     }
 
     rxKinesisConsumer.observable.subscribe(o)
-
     println(s"Welcome $userName")
     println(s"Start Chatting!")
+
     while(true) {
-      val input = StdIn.readLine()
-      rxKinesisObservable.onNext(s"$MyID$userName: $input")
+      // Read message
+      val message = StdIn.readLine()
+      // Send message
+      rxKinesisObservable.onNext(s"$MyID$userName: $message")
     }
   }
-
 }
