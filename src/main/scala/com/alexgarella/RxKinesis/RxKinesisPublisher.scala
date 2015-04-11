@@ -29,21 +29,20 @@ import scala.concurrent.Future
 /**
  * Publish data to an Amazon Kinesis stream.
  *
- * @param unparse function to unparse the data to publish
+ * @param serialize function to serialize the data to publish
  * @param observable observable which provides the data
  * @param config publisher configuration
  * @tparam T type of the data
  */
 //TODO Create stream on starting
-class RxKinesisPublisher[T](unparse: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
+class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
 
   val amazonKinesisClient: AmazonKinesisAsyncClient =
     new AmazonKinesisAsyncClient(config.credentialsProvider)
         .withEndpoint(config.endPoint)
 
-  //TODO Fix ugly type annotations
   val onNext: (T => Unit) = value => {
-    val v: String = unparse(value)
+    val v: String = serialize(value)
     val putRecordRequest = new PutRecordRequest
     putRecordRequest.setStreamName(config.streamName)
     putRecordRequest.setData(ByteBuffer.wrap(v.getBytes))
@@ -66,12 +65,12 @@ class RxKinesisPublisher[T](unparse: T => String, observable: Observable[T], con
     Observer[T](onNext, onError, onCompleted)
   }
 
-      override def toString: String =
+  override def toString: String =
     s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.applicationName}, ${config.partitionKey}})"
   }
 
 object RxKinesisPublisher {
 
-  def apply[T](unparser: T => String, observable: Observable[T], config: PublisherConfiguration) =
-    Future { new RxKinesisPublisher(unparser, observable, config) }
+  def apply[T](deserializer: T => String, observable: Observable[T], config: PublisherConfiguration) =
+    Future { new RxKinesisPublisher(deserializer, observable, config) }
 }
