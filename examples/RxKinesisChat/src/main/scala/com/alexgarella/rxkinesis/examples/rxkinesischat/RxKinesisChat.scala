@@ -18,11 +18,10 @@ package com.alexgarella.rxkinesis.examples.rxkinesischat
 
 import java.util.UUID
 
-import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
 import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, PublisherConfiguration}
+import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream
-import rx.lang.scala.schedulers.IOScheduler
 import rx.lang.scala.{Observer, Subject}
 
 import scala.io.StdIn
@@ -56,7 +55,7 @@ object RxKinesisChat extends App {
       }
     }
 
-    rxKinesisConsumer.observable.observeOn(IOScheduler()).subscribe(o)
+    rxKinesisConsumer.observable.subscribe(o)
 
     println(s"Welcome $userName")
     println(s"Start Chatting!")
