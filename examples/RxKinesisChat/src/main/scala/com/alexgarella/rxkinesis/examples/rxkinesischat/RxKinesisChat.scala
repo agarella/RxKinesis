@@ -41,12 +41,12 @@ object RxKinesisChat extends App {
     val consumerConfig = ConsumerConfiguration(Credentials, StreamName, EndPoint, ApplicationName, InitialPositionInStream.LATEST)
 
     // Start the consumer and wait a while for the start up process to finish
-    val rxKinesisConsumer = RxKinesisConsumer(consumerConfig)
+    val rxKinesisConsumer = RxKinesisConsumer((x: String) => x, consumerConfig)
     Thread.sleep(20000)
 
     // Publish the observable which will be used to send chat messages
     val rxKinesisObservable = Subject[String] ()
-    RxKinesisPublisher(rxKinesisObservable, publisherConfig)
+    RxKinesisPublisher((x: String) => x, rxKinesisObservable, publisherConfig)
 
     println("Welcome to RxKinesisChat!")
     println("Enter your user name:")
@@ -57,13 +57,14 @@ object RxKinesisChat extends App {
     val IDLength = MyID.length
 
     // Print the received chat messages of other users
-    rxKinesisConsumer.observable.subscribe {
-      new Observer[String] {
+    val o = new Observer[String] {
+      override def onNext(value: String): Unit = {
         // Only print messages originating from other users
-        (value: String) => if (MyID != value.take(IDLength)) println(s"${value.drop(IDLength)}")
+        if (MyID != value.take(IDLength)) println(s"${value.drop(IDLength)}")
       }
     }
 
+    rxKinesisConsumer.observable.subscribe(o)
     println(s"Welcome $userName")
     println(s"Start Chatting!")
 
