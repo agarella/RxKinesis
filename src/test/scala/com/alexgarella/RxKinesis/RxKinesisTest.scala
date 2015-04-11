@@ -17,7 +17,7 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
-import com.alexgarella.RxKinesis.configuration.Configuration.{PublisherConfiguration, ConsumerConfiguration}
+import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, PublisherConfiguration}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.kinesis.AmazonKinesisClient
@@ -33,7 +33,7 @@ import rx.lang.scala.{Observable, Observer}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Try, Random}
+import scala.util.Random
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
 
@@ -44,7 +44,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
   val Date = DateTimeFormat.forPattern("yyyyMMddmm").print(new DateTime())
 
-  def parser = (s: String) => Try { Integer.parseInt(s) }
+  def parser = (s: String) => Integer.parseInt(s)
 
   var buffer: ListBuffer[Int] = ListBuffer.empty
 
@@ -161,7 +161,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     Thread.sleep(25000)
 
     val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
-    RxKinesisPublisher((x: Int) => Try(x.toString), Observable.just(1, 2, 3, 4, 5), config)
+    RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
     Thread.sleep(3000)
 
     assertResult(List(1, 2, 3, 4, 5))(buffer.toList)

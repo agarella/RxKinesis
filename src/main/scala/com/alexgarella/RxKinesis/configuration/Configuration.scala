@@ -15,6 +15,7 @@
  */
 package com.alexgarella.RxKinesis.configuration
 
+import java.net.InetAddress
 import java.util.UUID
 
 import com.amazonaws.auth.AWSCredentialsProvider
@@ -41,7 +42,11 @@ object Configuration {
                                       initialPositionInStream: InitialPositionInStream)
 
   def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration =
-    new KinesisClientLibConfiguration(config.applicationName, config.streamName, config.credentialsProvider, UUID.randomUUID().toString)
+    new KinesisClientLibConfiguration(
+      config.applicationName,
+      config.streamName,
+      config.credentialsProvider,
+      InetAddress.getLocalHost.getCanonicalHostName + ":" + UUID.randomUUID())
         .withKinesisEndpoint(config.endPoint)
         .withInitialPositionInStream(config.initialPositionInStream)
 

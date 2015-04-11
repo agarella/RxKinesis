@@ -17,6 +17,8 @@ package com.alexgarella.RxKinesis.logging
 
 import org.apache.log4j.Logger
 
+//TODO remark, fail fast and leave error handling to the user of the API
+//Have a look at error handling in RX
 trait Logging {
 
   val Log = Logger.getRootLogger

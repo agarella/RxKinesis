@@ -25,33 +25,30 @@ import rx.lang.scala.{Observable, Observer}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
 
 /**
  * Publish data to an Amazon Kinesis stream.
  *
- * @param unparse function to unparse the data to publish
+ * @param serialize function to serialize the data to publish
  * @param observable observable which provides the data
  * @param config publisher configuration
  * @tparam T type of the data
  */
-class RxKinesisPublisher[T](unparse: T => Try[String], observable: Observable[T], config: PublisherConfiguration) extends Logging {
+//TODO Create stream on starting
+class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
 
   val amazonKinesisClient: AmazonKinesisAsyncClient =
     new AmazonKinesisAsyncClient(config.credentialsProvider)
         .withEndpoint(config.endPoint)
 
-  //TODO Fix ugly type annotations
-  val onNext: (T => Unit) = value => unparse(value) match {
-    case Success(v) =>
-      val putRecordRequest = new PutRecordRequest
-      putRecordRequest.setStreamName(config.streamName)
-      putRecordRequest.setData(ByteBuffer.wrap(v.getBytes))
-      putRecordRequest.setPartitionKey(config.partitionKey)
-      Log.info(s"Publishing value: $v, to $this")
-      amazonKinesisClient.putRecord(putRecordRequest)
-    case Failure(f) =>
-      Log.error(s"Failed to unparse")
+  val onNext: (T => Unit) = value => {
+    val v: String = serialize(value)
+    val putRecordRequest = new PutRecordRequest
+    putRecordRequest.setStreamName(config.streamName)
+    putRecordRequest.setData(ByteBuffer.wrap(v.getBytes))
+    putRecordRequest.setPartitionKey(config.partitionKey)
+    Log.info(s"Publishing value: $v, to $this")
+    amazonKinesisClient.putRecord(putRecordRequest)
   }
 
   val onError: (Throwable => Unit) = {
@@ -68,12 +65,12 @@ class RxKinesisPublisher[T](unparse: T => Try[String], observable: Observable[T]
     Observer[T](onNext, onError, onCompleted)
   }
 
-      override def toString: String =
+  override def toString: String =
     s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.applicationName}, ${config.partitionKey}})"
   }
 
 object RxKinesisPublisher {
 
-  def apply[T](unparser: T => Try[String], observable: Observable[T], config: PublisherConfiguration) =
-    Future { new RxKinesisPublisher(unparser, observable, config) }
+  def apply[T](deserializer: T => String, observable: Observable[T], config: PublisherConfiguration) =
+    Future { new RxKinesisPublisher(deserializer, observable, config) }
 }
