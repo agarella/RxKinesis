@@ -24,7 +24,6 @@ import rx.lang.scala.{Observable, Subscriber}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Try
 
 /**
  * Consume data from an Amazon Kinesis stream.
@@ -33,7 +32,11 @@ import scala.util.Try
  * @param config consumer configuration
  * @tparam T type of the data
  */
-class RxKinesisConsumer[T](parser: String => Try[T], config: ConsumerConfiguration) extends Logging {
+
+//TODO Instead of doing the bookkeepping yourself try to reuse Rx
+//TODO Have a look at Publisher subject.
+//TODO Parametrize Subject depending on the Configuration?
+class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
 
   val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
   var recordProcessor = new KinesisRecordProcessor[T](parser)
@@ -70,5 +73,5 @@ class RxKinesisConsumer[T](parser: String => Try[T], config: ConsumerConfigurati
 
 object RxKinesisConsumer {
 
-  def apply[T](parser: String => Try[T], config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
+  def apply[T](parser: String => T, config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
 }

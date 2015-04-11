@@ -23,9 +23,8 @@ import rx.lang.scala.Subscriber
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success, Try}
 
-class KinesisRecordProcessor[T](parse: String => Try[T]) extends IRecordProcessor with Logging {
+class KinesisRecordProcessor[T](parse: String => T) extends IRecordProcessor with Logging {
 
   var kinesisShardID: Option[String] = None
   val subscribers: ListBuffer[Subscriber[T]] = ListBuffer.empty
@@ -50,16 +49,11 @@ class KinesisRecordProcessor[T](parse: String => Try[T]) extends IRecordProcesso
       subscriber <- subscribers
       record <- records
     } yield {
-      parse(getRecordData(record)) match {
-        case Success(parsedRecord) =>
-          Log.info(s"SequenceNumber: ${record.getSequenceNumber}")
-          Log.info(s"PartitionKey: ${record.getPartitionKey}")
-          Log.info(s"Record Data: $parsedRecord")
-          subscriber.onNext(parsedRecord)
-        case Failure(f) =>
-          Log.error(s"Failed parsing data")
-          Log.error(f)
-      }
+      val parsedRecord = parse(getRecordData(record))
+      Log.info(s"SequenceNumber: ${record.getSequenceNumber}")
+      Log.info(s"PartitionKey: ${record.getPartitionKey}")
+      Log.info(s"Record Data: $parsedRecord")
+      subscriber.onNext(parsedRecord)
     }
   }
 
