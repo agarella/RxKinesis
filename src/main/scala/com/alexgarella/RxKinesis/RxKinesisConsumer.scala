@@ -20,7 +20,7 @@ import com.alexgarella.RxKinesis.configuration.Configuration
 import com.alexgarella.RxKinesis.configuration.Configuration.ConsumerConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker
-import rx.lang.scala.{Observable, Subscriber}
+import rx.lang.scala.{Observable, Subject}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -32,21 +32,16 @@ import scala.concurrent.Future
  * @param config consumer configuration
  * @tparam T type of the data
  */
-
-//TODO Instead of doing the bookkeepping yourself try to reuse Rx
 //TODO Have a look at Publisher subject.
 //TODO Parametrize Subject depending on the Configuration?
 class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
 
   val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
-  var recordProcessor = new KinesisRecordProcessor[T](parser)
+  val subject = Subject[T]()
+  val recordProcessor: KinesisRecordProcessor[T] = new KinesisRecordProcessor(parser, subject)
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
 
-  def observable: Observable[T] = Observable[T] {
-    subscriber: Subscriber[T] => {
-      recordProcessor.subscribe(subscriber)
-    }
-  }
+  def observable: Observable[T] = subject
 
   def start(): Unit = startStream()
 
