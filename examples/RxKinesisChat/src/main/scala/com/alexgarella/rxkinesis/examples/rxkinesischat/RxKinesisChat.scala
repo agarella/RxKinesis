@@ -42,7 +42,6 @@ object RxKinesisChat extends App {
 
     // Start the consumer and wait a while for the start up process to finish
     val rxKinesisConsumer = RxKinesisConsumer(consumerConfig)
-//    rxKinesisConsumer.startAsync()
     Thread.sleep(20000)
 
     // Publish the observable which will be used to send chat messages
