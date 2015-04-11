@@ -73,4 +73,7 @@ object RxKinesisPublisher {
 
   def apply[T](deserializer: T => String, observable: Observable[T], config: PublisherConfiguration) =
     Future { new RxKinesisPublisher(deserializer, observable, config) }
+
+  def apply(observable: Observable[String], config: PublisherConfiguration) =
+    Future { new RxKinesisPublisher((x: String) => x, observable, config)}
 }
