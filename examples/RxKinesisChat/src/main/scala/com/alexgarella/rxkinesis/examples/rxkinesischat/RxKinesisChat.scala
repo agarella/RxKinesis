@@ -33,12 +33,12 @@ object RxKinesisChat extends App {
 
   override def main (args: Array[String]) {
     // Stream settings
-    val EndPoint = "kinesis.eu-central-1.amazonaws.com"
+    val RegionName = "eu-central-1"
     val ApplicationName = s"${UUID.randomUUID()}"
     val Credentials = new ProfileCredentialsProvider()
     val StreamName = "TestStream"
-    val publisherConfig = PublisherConfiguration(Credentials, StreamName, EndPoint, ApplicationName, "1")
-    val consumerConfig = ConsumerConfiguration(Credentials, StreamName, EndPoint, ApplicationName, InitialPositionInStream.LATEST)
+    val publisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1")
+    val consumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
 
     // Start the consumer and wait a while for the start up process to finish
     val rxKinesisConsumer = RxKinesisConsumer((x: String) => x, consumerConfig)

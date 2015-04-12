@@ -19,6 +19,7 @@ import java.nio.ByteBuffer
 
 import com.alexgarella.RxKinesis.configuration.Configuration.PublisherConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
 import com.amazonaws.services.kinesis.model.PutRecordRequest
 import rx.lang.scala.{Observable, Observer}
@@ -38,8 +39,7 @@ import scala.concurrent.Future
 class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
 
   val amazonKinesisClient: AmazonKinesisAsyncClient =
-    new AmazonKinesisAsyncClient(config.credentialsProvider)
-        .withEndpoint(config.endPoint)
+    new AmazonKinesisAsyncClient(config.credentialsProvider).withRegion(Regions.fromName(config.regionName))
 
   val onNext: (T => Unit) = value => {
     val v: String = serialize(value)
@@ -66,7 +66,7 @@ class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], c
   }
 
   override def toString: String =
-    s"RxKinesisPublisher(${config.streamName}, ${config.endPoint}, ${config.applicationName}, ${config.partitionKey}})"
+    s"RxKinesisPublisher(${config.streamName}, ${config.regionName}, ${config.applicationName}, ${config.partitionKey}})"
   }
 
 object RxKinesisPublisher {

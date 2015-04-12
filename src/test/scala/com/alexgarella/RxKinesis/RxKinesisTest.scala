@@ -20,6 +20,7 @@ import java.nio.ByteBuffer
 import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, PublisherConfiguration}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.kinesis.AmazonKinesisClient
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream
 import com.amazonaws.services.kinesis.model.PutRecordRequest
@@ -39,10 +40,10 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
   val AccessKeyId = "AKIAJQEQD3XQAC25Z4VQ"
   val SecretAccessKey = "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"
-  val EndPoint = "kinesis.eu-central-1.amazonaws.com"
+  val RegionName = "eu-central-1"
   val StreamName = "TestStream"
 
-  val Date = DateTimeFormat.forPattern("yyyyMMddmm").print(new DateTime())
+  val Date = DateTimeFormat.forPattern("yyyyMMdd").print(new DateTime())
 
   def parser = (s: String) => Integer.parseInt(s)
 
@@ -155,7 +156,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     rxKinesis.observable.subscribe(getObserver)
     Thread.sleep(30000)
 
-    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", "1")
+    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", "1")
     RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
     Thread.sleep(3000)
 
@@ -171,7 +172,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
   def writeToStream(): Unit = {
     Thread.sleep(20000)
-    val client: AmazonKinesisClient = new AmazonKinesisClient(profileCredentialsProviderMock).withEndpoint(EndPoint)
+    val client: AmazonKinesisClient = new AmazonKinesisClient(profileCredentialsProviderMock).withRegion(Regions.fromName(RegionName))
 
     while (true) {
       val putRecordRequest = new PutRecordRequest
@@ -185,7 +186,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
   }
 
   def consumerConfig: ConsumerConfiguration =
-    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, EndPoint, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
+    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)

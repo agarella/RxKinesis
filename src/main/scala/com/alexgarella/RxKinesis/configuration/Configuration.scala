@@ -29,7 +29,7 @@ object Configuration {
   case class PublisherConfiguration(
                                        credentialsProvider: AWSCredentialsProvider,
                                        streamName: String,
-                                       endPoint: String,
+                                       regionName: String,
                                        applicationName: String,
                                        partitionKey: String)
 
@@ -37,7 +37,7 @@ object Configuration {
   case class ConsumerConfiguration(
                                       credentialsProvider: AWSCredentialsProvider,
                                       streamName: String,
-                                      endPoint: String,
+                                      regionName: String,
                                       applicationName: String,
                                       initialPositionInStream: InitialPositionInStream)
 
@@ -47,7 +47,6 @@ object Configuration {
       config.streamName,
       config.credentialsProvider,
       InetAddress.getLocalHost.getCanonicalHostName + ":" + UUID.randomUUID())
-        .withKinesisEndpoint(config.endPoint)
+        .withRegionName(config.regionName)
         .withInitialPositionInStream(config.initialPositionInStream)
-
 }
