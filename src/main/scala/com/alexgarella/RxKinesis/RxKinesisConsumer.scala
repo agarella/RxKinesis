@@ -61,7 +61,7 @@ class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) e
     Log.info(s"Stopped: $this")
   }
 
-  override def toString = s"RxKinesisConsumer(${config.streamName}, ${config.endPoint}, ${config.applicationName})"
+  override def toString = s"RxKinesisConsumer(${config.streamName}, ${config.regionName}, ${config.applicationName})"
 }
 
 object RxKinesisConsumer {
