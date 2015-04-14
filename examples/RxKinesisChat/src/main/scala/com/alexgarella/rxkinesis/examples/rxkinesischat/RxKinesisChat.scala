@@ -41,12 +41,12 @@ object RxKinesisChat extends App {
     val consumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
 
     // Start the consumer and wait a while for the start up process to finish
-    val rxKinesisConsumer = RxKinesisConsumer((x: String) => x, consumerConfig)
+    val rxKinesisConsumer = RxKinesisConsumer(consumerConfig)
     Thread.sleep(20000)
 
     // Publish the observable which will be used to send chat messages
     val rxKinesisObservable = Subject[String] ()
-    RxKinesisPublisher((x: String) => x, rxKinesisObservable, publisherConfig)
+    RxKinesisPublisher(rxKinesisObservable, publisherConfig)
 
     println("Welcome to RxKinesisChat!")
     println("Enter your user name:")
