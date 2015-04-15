@@ -18,10 +18,8 @@ package com.alexgarella.rxkinesis.examples.rxkinesischat
 
 import java.util.UUID
 
-import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, PublisherConfiguration}
 import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream
+import com.alexgarella.rxkinesis.examples.rxkinesischat.Parse.Message
 import rx.lang.scala.{Observer, Subject}
 
 import scala.io.StdIn
@@ -31,36 +29,29 @@ import scala.io.StdIn
  */
 object RxKinesisChat extends App {
 
-  override def main (args: Array[String]) {
-    // Stream settings
-    val RegionName = "eu-central-1"
-    val ApplicationName = s"${UUID.randomUUID()}"
-    val Credentials = new ProfileCredentialsProvider()
-    val StreamName = "TestStream"
-    val publisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1")
-    val consumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
+  override def main(args: Array[String]) {
 
     // Start the consumer and wait a while for the start up process to finish
-    val rxKinesisConsumer = RxKinesisConsumer(consumerConfig)
+    val rxKinesisConsumer = RxKinesisConsumer(Parse.parseMessage, Config.ConsumerConfig)
     Thread.sleep(20000)
 
     // Publish the observable which will be used to send chat messages
-    val rxKinesisObservable = Subject[String] ()
-    RxKinesisPublisher(rxKinesisObservable, publisherConfig)
+    val rxKinesisObservable = Subject[Message]()
+    RxKinesisPublisher(Parse.serializeMessage, rxKinesisObservable, Config.PublisherConfig)
 
     println("Welcome to RxKinesisChat!")
     println("Enter your user name:")
 
     // User settings
     val userName = StdIn.readLine()
-    val MyID = UUID.randomUUID().toString // Prefix each message with a UUID to distinguish users
-    val IDLength = MyID.length
+    val MyID = UUID.randomUUID().toString
 
     // Print the received chat messages of other users
-    val o = new Observer[String] {
-      override def onNext(value: String): Unit = {
+    val o = new Observer[Message] {
+      override def onNext(value: Message): Unit = value match {
         // Only print messages originating from other users
-        if (MyID != value.take(IDLength)) println(s"${value.drop(IDLength)}")
+        case Message(id, name, message) => if (MyID != id) println(s"$name: $message")
+        case _ => ()
       }
     }
 
@@ -68,11 +59,11 @@ object RxKinesisChat extends App {
     println(s"Welcome $userName")
     println(s"Start Chatting!")
 
-    while(true) {
+    while (true) {
       // Read message
       val message = StdIn.readLine()
       // Send message
-      rxKinesisObservable.onNext(s"$MyID$userName: $message")
+      rxKinesisObservable.onNext(Message(MyID, userName, message))
     }
   }
 }
