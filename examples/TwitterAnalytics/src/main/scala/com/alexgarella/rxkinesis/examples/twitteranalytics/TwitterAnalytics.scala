@@ -21,7 +21,6 @@ import java.util.concurrent.LinkedBlockingQueue
 import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
 import com.twitter.hbc.ClientBuilder
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint
-import com.twitter.hbc.core.event.Event
 import com.twitter.hbc.core.processor.StringDelimitedProcessor
 import com.twitter.hbc.core.{Constants, HttpHosts}
 import com.twitter.hbc.httpclient.auth.OAuth1
@@ -42,28 +41,35 @@ object TwitterAnalytics {
   val DefaultNumberOfTweets = 50
   var NumberOfTweets: Int = _
 
+  /**
+   * This observer sorts and prints the hashtags in descending order by frequency
+   */
   val observer = new Observer[Seq[JsValue]]{
 
     val result = ListBuffer.empty[String]
 
     override def onCompleted(): Unit = {
       run = false
-      result.groupBy(x => x).mapValues(_.size).toList.sortBy(_._2).reverse
+      result.groupBy(x => x)
+          .mapValues(_.size)
+          .toList
+          .sortBy(_._2)
+          .reverse
           .foreach { x =>
             val (hashTag, frequency) = x
             println(s"$frequency\t$hashTag")
-      }
+          }
     }
 
     override def onNext(value: Seq[JsValue]): Unit = {
-      val vector = value.head match {
-        case JsArray(values) => values
+      val vector = value.headOption match {
+        case Some(JsArray(values)) => values
         case _ => Vector()
       }
-      vector.map(_.asJsObject.getFields("text")).foreach {
-        x =>
-          result += x.head.prettyPrint.replaceAll("\"", "").toLowerCase
-      }
+      vector.map(_.asJsObject.getFields("text"))
+          .foreach { x =>
+            result += x.head.prettyPrint.replaceAll("\"", "").toLowerCase
+          }
     }
 
     override def onError(error: Throwable): Unit = throw error
@@ -85,6 +91,11 @@ object TwitterAnalytics {
     consumer.stop()
   }
 
+  /**
+   * Publish the tweets to the subject
+   * @param tweets the queue containing the tweets
+   * @param s the subject to publish to
+   */
   private def processTweets(tweets: LinkedBlockingQueue[String], s: Subject[String]): Unit = {
     Thread.sleep(20000)
     while (run) {
@@ -94,9 +105,12 @@ object TwitterAnalytics {
     s.onCompleted()
   }
 
+  /**
+   * Set up the hosebirdClient
+   * @return queue of tweets
+   */
   private def tweetQueue(): LinkedBlockingQueue[String] = {
     val msgQueue = new LinkedBlockingQueue[String](100000)
-    val eventQueue = new LinkedBlockingQueue[Event](1000)
 
     println("Enter keywords to filter tweets:")
     val keywords = StdIn.readLine().split(" ").toList.asJava
@@ -106,23 +120,20 @@ object TwitterAnalytics {
       StdIn.readInt()
     }.getOrElse(DefaultNumberOfTweets)
 
-    /** Declare the host you want to connect to, the endpoint, and authentication (basic auth or oauth) */
     val hosebirdHosts = new HttpHosts(Constants.STREAM_HOST)
     val hosebirdEndpoint = new StatusesFilterEndpoint()
     hosebirdEndpoint.trackTerms(keywords)
 
+    // Read secrets from .credentials file
     val reader = new BufferedReader(new FileReader(".credentials"))
-
     val consumerKey = reader.readLine()
     val consumerSecret = reader.readLine()
     val token = reader.readLine()
     val secret = reader.readLine()
-
     reader.close()
 
     val clientName = "TwitterAnalytics"
 
-    // These secrets should be read from a config file
     val hosebirdAuth = new OAuth1(consumerKey, consumerSecret, token, secret)
 
     val builder = new ClientBuilder()
@@ -133,7 +144,6 @@ object TwitterAnalytics {
         .processor(new StringDelimitedProcessor(msgQueue))
 
     val hosebirdClient = builder.build()
-    // Attempts to establish a connection.
     hosebirdClient.connect()
 
     msgQueue
