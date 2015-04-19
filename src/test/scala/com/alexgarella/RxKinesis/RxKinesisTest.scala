@@ -55,7 +55,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
 
   var buffer: ListBuffer[Int] = ListBuffer.empty
 
-  //TODO Add non happy flow tests
   feature("reactive streaming from Kinesis") {
     val NumberOfElements = 10
     def isEven = (x: Int) => { x % 2 == 0 }
@@ -154,7 +153,6 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     }
   }
 
-  //TODO convert to Given, When, Then style
   feature("reactive streaming to Amazon Kinesis") {
     buffer = ListBuffer.empty
 
