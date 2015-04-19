@@ -18,7 +18,7 @@ package com.alexgarella.rxkinesis.examples.twitteranalytics
 import java.io.{BufferedReader, FileReader}
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
+import com.alexgarella.RxKinesis.{RxKinesisPublisher, RxKinesisConsumer}
 import com.twitter.hbc.ClientBuilder
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint
 import com.twitter.hbc.core.processor.StringDelimitedProcessor
@@ -35,8 +35,9 @@ import scala.util.Try
 object TwitterAnalytics {
 
   var run = true
-  val consumer = RxKinesisConsumer(_.parseJson, Config.ConsumerConfig)
-  val s = Subject[String] ()
+
+  val rxKinesisConsumer = RxKinesisConsumer(_.parseJson, Config.ConsumerConfig)
+  val subject = Subject[String] ()
 
   val DefaultNumberOfTweets = 50
   var NumberOfTweets: Int = _
@@ -46,12 +47,12 @@ object TwitterAnalytics {
    */
   val observer = new Observer[JsValue]{
 
-    val result = ListBuffer.empty[String]
+    val hashTags = ListBuffer.empty[String]
 
     override def onCompleted(): Unit = {
       run = false
       println("#\thashtag")
-      result.groupBy(x => x)
+      hashTags.groupBy(x => x)
           .mapValues(_.size)
           .toList
           .sortBy(_._2)
@@ -69,11 +70,11 @@ object TwitterAnalytics {
       }
       jsValues.map(_.asJsObject.getFields("text").head)
           .foreach { x =>
-            val s = x match {
+            val hashTag = x match {
               case JsString(stringValue) => stringValue.toLowerCase
               case _ => ""
             }
-            result += s
+            hashTags += hashTag
           }
     }
 
@@ -83,16 +84,15 @@ object TwitterAnalytics {
   def main(args: Array[String]): Unit = {
     val tweets: LinkedBlockingQueue[String] = tweetQueue()
 
-    consumer.observable
+    rxKinesisConsumer.observable
         .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags").head)
         .take(NumberOfTweets)
         .subscribe(observer)
 
-    RxKinesisPublisher(s, Config.PublisherConfig)
+    RxKinesisPublisher(subject, Config.PublisherConfig)
 
-    processTweets(tweets, s)
-
-    consumer.stop()
+    processTweets(tweets, subject)
+    rxKinesisConsumer.stop()
   }
 
   /**
