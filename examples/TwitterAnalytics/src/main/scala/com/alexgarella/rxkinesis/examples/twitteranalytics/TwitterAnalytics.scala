@@ -1,12 +1,26 @@
+/*
+ * Copyright 2015 Alex Garella
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
 package com.alexgarella.rxkinesis.examples.twitteranalytics
 
 import java.io.{BufferedReader, FileReader}
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
+import com.alexgarella.RxKinesis.{RxKinesisPublisher, RxKinesisConsumer}
 import com.twitter.hbc.ClientBuilder
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint
-import com.twitter.hbc.core.event.Event
 import com.twitter.hbc.core.processor.StringDelimitedProcessor
 import com.twitter.hbc.core.{Constants, HttpHosts}
 import com.twitter.hbc.httpclient.auth.OAuth1
@@ -21,55 +35,71 @@ import scala.util.Try
 object TwitterAnalytics {
 
   var run = true
-  val consumer = RxKinesisConsumer(_.parseJson, Config.ConsumerConfig)
-  val s = Subject[String] ()
+
+  val rxKinesisConsumer = RxKinesisConsumer(_.parseJson, Config.ConsumerConfig)
+  val subject = Subject[String] ()
 
   val DefaultNumberOfTweets = 50
   var NumberOfTweets: Int = _
 
-  val observer = new Observer[Seq[JsValue]]{
+  /**
+   * This observer sorts and prints the hashtags in descending order by frequency
+   */
+  val observer = new Observer[JsValue]{
 
-    val result = ListBuffer.empty[String]
+    val hashTags = ListBuffer.empty[String]
 
     override def onCompleted(): Unit = {
       run = false
-      result.groupBy(x => x).mapValues(_.size).toList.sortBy(_._2).reverse
+      println("#\thashtag")
+      hashTags.groupBy(x => x)
+          .mapValues(_.size)
+          .toList
+          .sortBy(_._2)
+          .reverse
           .foreach { x =>
             val (hashTag, frequency) = x
             println(s"$frequency\t$hashTag")
-      }
+          }
     }
 
-    override def onNext(value: Seq[JsValue]): Unit = {
-      val vector = value.head match {
+    override def onNext(value: JsValue): Unit = {
+      val jsValues = value match {
         case JsArray(values) => values
         case _ => Vector()
       }
-      vector.map(_.asJsObject.getFields("text")).foreach {
-        x =>
-          result += x.head.prettyPrint.replaceAll("\"", "").toLowerCase
-      }
+      jsValues.map(_.asJsObject.getFields("text").head)
+          .foreach { x =>
+            val hashTag = x match {
+              case JsString(stringValue) => stringValue.toLowerCase
+              case _ => ""
+            }
+            hashTags += hashTag
+          }
     }
 
     override def onError(error: Throwable): Unit = throw error
   }
 
   def main(args: Array[String]): Unit = {
-
     val tweets: LinkedBlockingQueue[String] = tweetQueue()
 
-    consumer.observable
-        .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags"))
+    rxKinesisConsumer.observable
+        .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags").head)
         .take(NumberOfTweets)
         .subscribe(observer)
 
-    RxKinesisPublisher(s, Config.PublisherConfig)
+    RxKinesisPublisher(subject, Config.PublisherConfig)
 
-    processTweets(tweets, s)
-
-    consumer.stop()
+    processTweets(tweets, subject)
+    rxKinesisConsumer.stop()
   }
 
+  /**
+   * Publish the tweets to the subject, wait for 20 seconds for the RxConsumer to start
+   * @param tweets the queue containing the tweets
+   * @param s the subject to publish to
+   */
   private def processTweets(tweets: LinkedBlockingQueue[String], s: Subject[String]): Unit = {
     Thread.sleep(20000)
     while (run) {
@@ -79,9 +109,12 @@ object TwitterAnalytics {
     s.onCompleted()
   }
 
+  /**
+   * Set up the hosebirdClient and get the queue with tweets
+   * @return queue of tweets
+   */
   private def tweetQueue(): LinkedBlockingQueue[String] = {
     val msgQueue = new LinkedBlockingQueue[String](100000)
-    val eventQueue = new LinkedBlockingQueue[Event](1000)
 
     println("Enter keywords to filter tweets:")
     val keywords = StdIn.readLine().split(" ").toList.asJava
@@ -91,23 +124,20 @@ object TwitterAnalytics {
       StdIn.readInt()
     }.getOrElse(DefaultNumberOfTweets)
 
-    /** Declare the host you want to connect to, the endpoint, and authentication (basic auth or oauth) */
     val hosebirdHosts = new HttpHosts(Constants.STREAM_HOST)
     val hosebirdEndpoint = new StatusesFilterEndpoint()
     hosebirdEndpoint.trackTerms(keywords)
 
+    // Read secrets from .credentials file
     val reader = new BufferedReader(new FileReader(".credentials"))
-
     val consumerKey = reader.readLine()
     val consumerSecret = reader.readLine()
     val token = reader.readLine()
     val secret = reader.readLine()
-
     reader.close()
 
     val clientName = "TwitterAnalytics"
 
-    // These secrets should be read from a config file
     val hosebirdAuth = new OAuth1(consumerKey, consumerSecret, token, secret)
 
     val builder = new ClientBuilder()
@@ -118,7 +148,6 @@ object TwitterAnalytics {
         .processor(new StringDelimitedProcessor(msgQueue))
 
     val hosebirdClient = builder.build()
-    // Attempts to establish a connection.
     hosebirdClient.connect()
 
     msgQueue
