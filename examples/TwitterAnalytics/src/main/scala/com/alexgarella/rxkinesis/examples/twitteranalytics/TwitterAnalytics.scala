@@ -44,12 +44,13 @@ object TwitterAnalytics {
   /**
    * This observer sorts and prints the hashtags in descending order by frequency
    */
-  val observer = new Observer[Seq[JsValue]]{
+  val observer = new Observer[JsValue]{
 
     val result = ListBuffer.empty[String]
 
     override def onCompleted(): Unit = {
       run = false
+      println("#\thashtag")
       result.groupBy(x => x)
           .mapValues(_.size)
           .toList
@@ -61,14 +62,18 @@ object TwitterAnalytics {
           }
     }
 
-    override def onNext(value: Seq[JsValue]): Unit = {
-      val vector = value.headOption match {
-        case Some(JsArray(values)) => values
+    override def onNext(value: JsValue): Unit = {
+      val jsValues = value match {
+        case JsArray(values) => values
         case _ => Vector()
       }
-      vector.map(_.asJsObject.getFields("text"))
+      jsValues.map(_.asJsObject.getFields("text").head)
           .foreach { x =>
-            result += x.head.prettyPrint.replaceAll("\"", "").toLowerCase
+            val s = x match {
+              case JsString(stringValue) => stringValue.toLowerCase
+              case _ => ""
+            }
+            result += s
           }
     }
 
@@ -76,11 +81,10 @@ object TwitterAnalytics {
   }
 
   def main(args: Array[String]): Unit = {
-
     val tweets: LinkedBlockingQueue[String] = tweetQueue()
 
     consumer.observable
-        .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags"))
+        .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags").head)
         .take(NumberOfTweets)
         .subscribe(observer)
 
@@ -92,7 +96,7 @@ object TwitterAnalytics {
   }
 
   /**
-   * Publish the tweets to the subject
+   * Publish the tweets to the subject, wait for 20 seconds for the RxConsumer to start
    * @param tweets the queue containing the tweets
    * @param s the subject to publish to
    */
@@ -106,7 +110,7 @@ object TwitterAnalytics {
   }
 
   /**
-   * Set up the hosebirdClient
+   * Set up the hosebirdClient and get the queue with tweets
    * @return queue of tweets
    */
   private def tweetQueue(): LinkedBlockingQueue[String] = {
