@@ -21,7 +21,7 @@ import com.alexgarella.RxKinesis.configuration.Configuration.PublisherConfigurat
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
-import com.amazonaws.services.kinesis.model.PutRecordRequest
+import com.amazonaws.services.kinesis.model.{PutRecordRequest, StreamStatus}
 import rx.lang.scala.{Observable, Observer}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,11 +35,20 @@ import scala.concurrent.Future
  * @param config publisher configuration
  * @tparam T type of the data
  */
-//TODO Create stream on starting
 class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
 
   val amazonKinesisClient: AmazonKinesisAsyncClient =
     new AmazonKinesisAsyncClient(config.credentialsProvider).withRegion(Regions.fromName(config.regionName))
+
+  if (!amazonKinesisClient.listStreams().getStreamNames.contains(config.streamName)) {
+    Log.info(s"Creating stream: ${config.streamName}")
+    amazonKinesisClient.createStream(config.streamName, config.shardCount)
+
+    while (amazonKinesisClient.describeStream(config.streamName).getStreamDescription.getStreamStatus != StreamStatus.ACTIVE.toString) {
+      //Block until Kinesis Stream becomes active
+    }
+    Log.info(s"Created stream: ${config.streamName}")
+  }
 
   val onNext: (T => Unit) = value => {
     val v: String = serialize(value)
@@ -51,22 +60,22 @@ class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], c
     amazonKinesisClient.putRecord(putRecordRequest)
   }
 
-  val onError: (Throwable => Unit) = {
-    case error: Error =>
-      Log.error(error.getMessage)
-      throw error
-    case exception: Exception =>
+  val onError: (Throwable => Unit) = exception => {
       Log.error(exception.getMessage)
+      throw exception
   }
 
-  val onCompleted: (() => Unit) = () => Log.info(s"$this completed")
+  val onCompleted: (() => Unit) = () => {
+    amazonKinesisClient.shutdown()
+    Log.info(s"$this completed")
+  }
 
   observable.subscribe {
     Observer[T](onNext, onError, onCompleted)
   }
 
   override def toString: String =
-    s"RxKinesisPublisher(${config.streamName}, ${config.regionName}, ${config.applicationName}, ${config.partitionKey}})"
+    s"RxKinesisPublisher(${config.streamName}, ${config.regionName}, ${config.applicationName}, ${config.partitionKey})"
   }
 
 object RxKinesisPublisher {

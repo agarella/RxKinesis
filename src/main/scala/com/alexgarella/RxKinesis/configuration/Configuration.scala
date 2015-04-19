@@ -31,7 +31,8 @@ object Configuration {
                                        streamName: String,
                                        regionName: String,
                                        applicationName: String,
-                                       partitionKey: String)
+                                       partitionKey: String,
+                                       shardCount: Int)
 
 
   case class ConsumerConfiguration(

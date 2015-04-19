@@ -32,8 +32,6 @@ import scala.concurrent.Future
  * @param config consumer configuration
  * @tparam T type of the data
  */
-//TODO Have a look at Publisher subject.
-//TODO Parametrize Subject depending on the Configuration?
 class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
 
   val subject = Subject[T]()
@@ -46,8 +44,6 @@ class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) e
   def observable: Observable[T] = subject
 
   def stop(): Unit = stopStream()
-
-  def stopAsync(): Future[Unit] = Future { stopStream() }
 
   private def startStream(): Unit = {
     Log.info(s"Starting: $this")

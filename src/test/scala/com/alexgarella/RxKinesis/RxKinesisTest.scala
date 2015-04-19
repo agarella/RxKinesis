@@ -15,6 +15,7 @@
  */
 package com.alexgarella.RxKinesis
 
+import java.io.{FileReader, BufferedReader}
 import java.nio.ByteBuffer
 
 import com.alexgarella.RxKinesis.configuration.Configuration.{ConsumerConfiguration, PublisherConfiguration}
@@ -38,8 +39,13 @@ import scala.util.Random
 
 class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
 
-  val AccessKeyId = "AKIAJQEQD3XQAC25Z4VQ"
-  val SecretAccessKey = "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"
+  val (accessKeyID, secretAccessKey) = {
+    val reader = new BufferedReader(new FileReader(".credentials"))
+    val accessKeyId = reader.readLine()
+    val secretAccessKey = reader.readLine()
+    (accessKeyId, secretAccessKey)
+  }
+
   val RegionName = "eu-central-1"
   val StreamName = "TestStream"
 
@@ -156,7 +162,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     rxKinesis.observable.subscribe(getObserver)
     Thread.sleep(30000)
 
-    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", "1")
+    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", "1", 1)
     RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
     Thread.sleep(3000)
 
@@ -189,7 +195,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     ConsumerConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
-    val basicAWSCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey)
+    val basicAWSCredentials = new BasicAWSCredentials(accessKeyID, secretAccessKey)
     val profileCredentialsProvider = mock[ProfileCredentialsProvider]
     doReturn(basicAWSCredentials).when(profileCredentialsProvider).getCredentials
     profileCredentialsProvider

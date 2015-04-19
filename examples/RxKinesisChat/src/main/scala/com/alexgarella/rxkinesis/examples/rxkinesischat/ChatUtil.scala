@@ -45,7 +45,7 @@ object Config {
   val RegionName = "eu-central-1"
   val ApplicationName = s"${UUID.randomUUID()}"
   val Credentials = new ProfileCredentialsProvider()
-  val StreamName = "TestStream"
-  val PublisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1")
+  val StreamName = "chat"
+  val PublisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1", 1)
   val ConsumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
 }
