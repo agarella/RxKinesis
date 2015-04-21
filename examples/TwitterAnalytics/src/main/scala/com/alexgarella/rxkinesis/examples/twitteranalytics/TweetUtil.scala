@@ -30,5 +30,5 @@ object Config {
   val Credentials = new ProfileCredentialsProvider()
   val StreamName = "tweets"
   val PublisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1", None)
-  val ConsumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
+  val ConsumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST, None)
 }
