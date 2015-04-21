@@ -18,12 +18,13 @@ package com.alexgarella.rxkinesis.examples.twitteranalytics
 import java.io.{BufferedReader, FileReader}
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.alexgarella.RxKinesis.{RxKinesisPublisher, RxKinesisConsumer}
+import com.alexgarella.RxKinesis.{RxKinesisConsumer, RxKinesisPublisher}
 import com.twitter.hbc.ClientBuilder
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint
 import com.twitter.hbc.core.processor.StringDelimitedProcessor
 import com.twitter.hbc.core.{Constants, HttpHosts}
 import com.twitter.hbc.httpclient.auth.OAuth1
+import rx.lang.scala.schedulers.ComputationScheduler
 import rx.lang.scala.{Observer, Subject}
 import spray.json._
 
@@ -34,7 +35,7 @@ import scala.util.Try
 
 object TwitterAnalytics {
 
-  var run = true
+  @volatile var run = true
 
   val rxKinesisConsumer = RxKinesisConsumer(_.parseJson, Config.ConsumerConfig)
   val subject = Subject[String] ()
@@ -45,7 +46,7 @@ object TwitterAnalytics {
   /**
    * This observer sorts and prints the hashtags in descending order by frequency
    */
-  val observer = new Observer[JsValue]{
+  val observer = new Observer[Option[JsValue]]{
 
     val hashTags = ListBuffer.empty[String]
 
@@ -63,9 +64,9 @@ object TwitterAnalytics {
           }
     }
 
-    override def onNext(value: JsValue): Unit = {
+    override def onNext(value: Option[JsValue]): Unit = {
       val jsValues = value match {
-        case JsArray(values) => values
+        case Some(JsArray(values)) => values
         case _ => Vector()
       }
       jsValues.map(_.asJsObject.getFields("text").head)
@@ -85,8 +86,9 @@ object TwitterAnalytics {
     val tweets: LinkedBlockingQueue[String] = tweetQueue()
 
     rxKinesisConsumer.observable
-        .map(_.asJsObject.fields("entities").asJsObject.getFields("hashtags").head)
+        .map(_.asJsObject.getFields("entities").headOption.getOrElse(JsObject()).asJsObject.getFields("hashtags").headOption)
         .take(NumberOfTweets)
+        .observeOn(ComputationScheduler())
         .subscribe(observer)
 
     RxKinesisPublisher(subject, Config.PublisherConfig)
@@ -96,12 +98,11 @@ object TwitterAnalytics {
   }
 
   /**
-   * Publish the tweets to the subject, wait for 20 seconds for the RxConsumer to start
+   * Publish the tweets to the subject
    * @param tweets the queue containing the tweets
    * @param s the subject to publish to
    */
   private def processTweets(tweets: LinkedBlockingQueue[String], s: Subject[String]): Unit = {
-    Thread.sleep(20000)
     while (run) {
       val tweet = tweets.take()
       s.onNext(tweet)
