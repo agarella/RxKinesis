@@ -32,7 +32,7 @@ object Configuration {
                                        regionName: String,
                                        applicationName: String,
                                        partitionKey: String,
-                                       shardCount: Int)
+                                       shardCount: Option[Integer])
 
 
   case class ConsumerConfiguration(
@@ -50,4 +50,6 @@ object Configuration {
       InetAddress.getLocalHost.getCanonicalHostName + ":" + UUID.randomUUID())
         .withRegionName(config.regionName)
         .withInitialPositionInStream(config.initialPositionInStream)
+
+  val DefaultShardCount: Integer = 1
 }

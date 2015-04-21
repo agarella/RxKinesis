@@ -46,6 +46,6 @@ object Config {
   val ApplicationName = s"${UUID.randomUUID()}"
   val Credentials = new ProfileCredentialsProvider()
   val StreamName = "chat"
-  val PublisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1", 1)
+  val PublisherConfig = PublisherConfiguration(Credentials, StreamName, RegionName, ApplicationName, "1", None)
   val ConsumerConfig = ConsumerConfiguration(Credentials, StreamName, RegionName, ApplicationName, InitialPositionInStream.LATEST)
 }
