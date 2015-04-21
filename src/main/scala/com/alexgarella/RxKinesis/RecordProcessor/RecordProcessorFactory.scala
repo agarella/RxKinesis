@@ -17,6 +17,12 @@ package com.alexgarella.RxKinesis.RecordProcessor
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.{IRecordProcessor, IRecordProcessorFactory}
 
+/**
+ * Implements [[IRecordProcessorFactory]]
+ *
+ * @param recordProcessor the record processor [[KinesisRecordProcessor]]
+ * @tparam T the type of the data to process
+ */
 class RecordProcessorFactory[T](val recordProcessor: KinesisRecordProcessor[T]) extends IRecordProcessorFactory {
 
   @Override
