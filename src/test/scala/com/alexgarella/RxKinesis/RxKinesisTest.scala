@@ -160,7 +160,7 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
     rxKinesis.observable.subscribe(getObserver)
     Thread.sleep(30000)
 
-    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", "1", 1)
+    val config = PublisherConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", "1", None)
     RxKinesisPublisher((x: Int) => x.toString, Observable.just(1, 2, 3, 4, 5), config)
     Thread.sleep(3000)
 

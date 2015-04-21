@@ -23,6 +23,13 @@ import rx.lang.scala.Observer
 
 import scala.collection.JavaConversions._
 
+/**
+ * Processes the incoming records and notifies the observer
+ *
+ * @param parse parse the records to the desired type
+ * @param observer the observer to pass data to
+ * @tparam T type of the data to process
+ */
 class KinesisRecordProcessor[T](parse: String => T, observer: Observer[T]) extends IRecordProcessor with Logging {
 
   var kinesisShardID: Option[String] = None
@@ -31,8 +38,18 @@ class KinesisRecordProcessor[T](parse: String => T, observer: Observer[T]) exten
     kinesisShardID = Option(shardId)
   }
 
+  /**
+   * @param checkpointer checkpoint the last processed record
+   * @param reason the reason for shutting down
+   */
   override def shutdown(checkpointer: IRecordProcessorCheckpointer, reason: ShutdownReason): Unit = checkpointer.checkpoint()
 
+  /**
+   * Process incoming records
+   *
+   * @param records the records to process
+   * @param checkpointer optionally keeps track of the progress of the stream processing
+   */
   override def processRecords(records: java.util.List[Record], checkpointer: IRecordProcessorCheckpointer): Unit = {
     def getRecordData(record: Record): String = new String(record.getData.array())
 

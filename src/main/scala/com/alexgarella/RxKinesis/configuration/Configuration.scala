@@ -22,9 +22,12 @@ import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionInStream, KinesisClientLibConfiguration}
 
 /**
- * Configuration case classes and helper functions
+ * Configuration case classes, constants and helper functions
  */
 object Configuration {
+
+  val DefaultShardCount: Integer = 1
+  val DefaultBufferSize = 10000
 
   case class PublisherConfiguration(
                                        credentialsProvider: AWSCredentialsProvider,
@@ -32,7 +35,7 @@ object Configuration {
                                        regionName: String,
                                        applicationName: String,
                                        partitionKey: String,
-                                       shardCount: Int)
+                                       shardCount: Option[Integer])
 
 
   case class ConsumerConfiguration(
@@ -40,7 +43,8 @@ object Configuration {
                                       streamName: String,
                                       regionName: String,
                                       applicationName: String,
-                                      initialPositionInStream: InitialPositionInStream)
+                                      initialPositionInStream: InitialPositionInStream,
+                                      bufferSize: Option[Int])
 
   def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration =
     new KinesisClientLibConfiguration(

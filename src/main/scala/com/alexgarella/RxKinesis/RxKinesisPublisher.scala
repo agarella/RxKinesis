@@ -17,6 +17,7 @@ package com.alexgarella.RxKinesis
 
 import java.nio.ByteBuffer
 
+import com.alexgarella.RxKinesis.configuration.Configuration
 import com.alexgarella.RxKinesis.configuration.Configuration.PublisherConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.regions.Regions
@@ -37,12 +38,19 @@ import scala.concurrent.Future
  */
 class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], config: PublisherConfiguration) extends Logging {
 
+  /**
+   * Instantiate an [[AmazonKinesisAsyncClient]]
+   */
   val amazonKinesisClient: AmazonKinesisAsyncClient =
     new AmazonKinesisAsyncClient(config.credentialsProvider).withRegion(Regions.fromName(config.regionName))
 
+  /**
+   * Create the stream in case it does not yet exist.
+   * Block until the stream becomes available.
+   */
   if (!amazonKinesisClient.listStreams().getStreamNames.contains(config.streamName)) {
     Log.info(s"Creating stream: ${config.streamName}")
-    amazonKinesisClient.createStream(config.streamName, config.shardCount)
+    amazonKinesisClient.createStream(config.streamName, config.shardCount.getOrElse(Configuration.DefaultShardCount))
 
     while (amazonKinesisClient.describeStream(config.streamName).getStreamDescription.getStreamStatus != StreamStatus.ACTIVE.toString) {
       //Block until Kinesis Stream becomes active
@@ -50,26 +58,38 @@ class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], c
     Log.info(s"Created stream: ${config.streamName}")
   }
 
+  /**
+   * Serialize and publish the value to Amazon Kinesis
+   */
   val onNext: (T => Unit) = value => {
     val v: String = serialize(value)
-    val putRecordRequest = new PutRecordRequest
-    putRecordRequest.setStreamName(config.streamName)
-    putRecordRequest.setData(ByteBuffer.wrap(v.getBytes))
-    putRecordRequest.setPartitionKey(config.partitionKey)
+    val putRecordRequest = new PutRecordRequest()
+        .withStreamName(config.streamName)
+        .withData(ByteBuffer.wrap(v.getBytes))
+        .withPartitionKey(config.partitionKey)
     Log.info(s"Publishing value: $v, to $this")
     amazonKinesisClient.putRecord(putRecordRequest)
   }
 
+  /**
+   * Log and propagate errors
+   */
   val onError: (Throwable => Unit) = exception => {
       Log.error(exception.getMessage)
       throw exception
   }
 
+  /**
+   * Shutdown the client when done
+   */
   val onCompleted: (() => Unit) = () => {
     amazonKinesisClient.shutdown()
     Log.info(s"$this completed")
   }
 
+  /**
+   * Subscribe the Observer to start publishing data to Amazon Kinesis
+   */
   observable.subscribe {
     Observer[T](onNext, onError, onCompleted)
   }
@@ -78,6 +98,9 @@ class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], c
     s"RxKinesisPublisher(${config.streamName}, ${config.regionName}, ${config.applicationName}, ${config.partitionKey})"
   }
 
+/**
+ * [[RxKinesisPublisher]] factory methods
+ */
 object RxKinesisPublisher {
 
   def apply[T](deserializer: T => String, observable: Observable[T], config: PublisherConfiguration) =

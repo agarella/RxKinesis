@@ -20,7 +20,8 @@ import com.alexgarella.RxKinesis.configuration.Configuration
 import com.alexgarella.RxKinesis.configuration.Configuration.ConsumerConfiguration
 import com.alexgarella.RxKinesis.logging.Logging
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker
-import rx.lang.scala.{Observable, Subject}
+import rx.lang.scala.Observable
+import rx.lang.scala.subjects.ReplaySubject
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -34,32 +35,61 @@ import scala.concurrent.Future
  */
 class RxKinesisConsumer[T](parser: String => T, config: ConsumerConfiguration) extends Logging {
 
-  val subject = Subject[T]()
+  /**
+   * [[ReplaySubject ]] with a default buffer size as defined in [[Configuration.DefaultBufferSize]]
+   * to provide an [[Observable]] externally.
+   * The subject is used internally to process data records in the [[KinesisRecordProcessor]]
+   */
+  val subject = ReplaySubject.withSize[T](config.bufferSize.getOrElse(Configuration.DefaultBufferSize))
 
+  /**
+   * Map the ConsumerConfiguration to [[com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration]]
+   */
   val kclConfig = Configuration.toKinesisClientLibConfiguration(config)
+
+  /**
+   * Instantiate the [[KinesisRecordProcessor]]
+   */
   val recordProcessor: KinesisRecordProcessor[T] = new KinesisRecordProcessor(parser, subject)
+
+  /**
+   * Instantiate the [[Worker]]
+   */
   val worker = new Worker(new RecordProcessorFactory(recordProcessor), kclConfig)
+
+  /**
+   * Start the stream asynchronously
+   */
   Future { startStream() }
 
+  /**
+   * Provides the observable with the data from the Amazon Kinesis stream
+   * @return [[Observable]]
+   */
   def observable: Observable[T] = subject
 
+  /**
+   * Stop the Amazon Kinesis stream
+   */
   def stop(): Unit = stopStream()
 
   private def startStream(): Unit = {
     Log.info(s"Starting: $this")
     worker.run()
-    Log.info(s"Started: $this")
   }
 
   private def stopStream(): Unit = {
     Log.info(s"Stopping: $this")
+    subject.onCompleted()
     worker.shutdown()
-    Log.info(s"Stopped: $this")
   }
 
   override def toString = s"RxKinesisConsumer(${config.streamName}, ${config.regionName}, ${config.applicationName})"
 }
 
+/**
+ * [[RxKinesisConsumer]] factory methods
+ */
 object RxKinesisConsumer {
 
   def apply[T](parser: String => T, config: ConsumerConfiguration) = new RxKinesisConsumer(parser, config)
