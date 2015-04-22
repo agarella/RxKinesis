@@ -190,7 +190,8 @@ class RxKinesisTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter w
   }
 
   def consumerConfig: ConsumerConfiguration =
-    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", InitialPositionInStream.LATEST)
+    ConsumerConfiguration(profileCredentialsProviderMock, StreamName, RegionName, s"RxKinesisTest$Date", InitialPositionInStream.LATEST,
+      None)
 
   def profileCredentialsProviderMock: ProfileCredentialsProvider = {
     val basicAWSCredentials = new BasicAWSCredentials(accessKeyID, secretAccessKey)
