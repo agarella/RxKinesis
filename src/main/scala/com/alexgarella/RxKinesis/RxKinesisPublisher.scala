@@ -25,9 +25,6 @@ import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient
 import com.amazonaws.services.kinesis.model.{PutRecordRequest, StreamStatus}
 import rx.lang.scala.{Observable, Observer}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-
 /**
  * Publish data to an Amazon Kinesis stream.
  *
@@ -103,9 +100,9 @@ class RxKinesisPublisher[T](serialize: T => String, observable: Observable[T], c
  */
 object RxKinesisPublisher {
 
-  def apply[T](deserializer: T => String, observable: Observable[T], config: PublisherConfiguration) =
-    Future { new RxKinesisPublisher(deserializer, observable, config) }
+  def apply[T](serializer: T => String, observable: Observable[T], config: PublisherConfiguration) =
+    new RxKinesisPublisher(serializer, observable, config)
 
   def apply(observable: Observable[String], config: PublisherConfiguration) =
-    Future { new RxKinesisPublisher((x: String) => x, observable, config)}
+    new RxKinesisPublisher((x: String) => x, observable, config)
 }
