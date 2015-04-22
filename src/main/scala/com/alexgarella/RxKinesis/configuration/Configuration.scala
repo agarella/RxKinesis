@@ -26,9 +26,24 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.{InitialPositionI
  */
 object Configuration {
 
+  /**
+   * The default shard count when creating a stream
+   */
   val DefaultShardCount: Integer = 1
-  val DefaultBufferSize = 10000
 
+  /**
+   * The default buffer size of a RxKinesisConsumer
+   */
+  val DefaultBufferSize = 10 * 1000
+
+  /**
+   * @param credentialsProvider provides the AWS credentials
+   * @param streamName the name of the stream
+   * @param regionName the name of the region
+   * @param applicationName the name of the application
+   * @param partitionKey the partition key
+   * @param shardCount optional shard count when creating a stream, default is [[DefaultShardCount]]
+   */
   case class PublisherConfiguration(
                                        credentialsProvider: AWSCredentialsProvider,
                                        streamName: String,
@@ -37,7 +52,15 @@ object Configuration {
                                        partitionKey: String,
                                        shardCount: Option[Integer])
 
-
+  /**
+   * @param credentialsProvider provides the AWS credentials
+   * @param streamName the name of the stream
+   * @param regionName the name of the region
+   * @param applicationName the name of the application, must be unique in case of running multiple instances
+   *                        of the application on the same machine
+   * @param initialPositionInStream the initial position in the stream
+   * @param bufferSize optional buffer size, default is [[DefaultBufferSize]]
+   */
   case class ConsumerConfiguration(
                                       credentialsProvider: AWSCredentialsProvider,
                                       streamName: String,
@@ -46,6 +69,11 @@ object Configuration {
                                       initialPositionInStream: InitialPositionInStream,
                                       bufferSize: Option[Int])
 
+  /**
+   * Maps a consumer [[ConsumerConfiguration]] to a [[KinesisClientLibConfiguration]]
+   * @param config the [[ConsumerConfiguration]]
+   * @return a [[KinesisClientLibConfiguration]]
+   */
   def toKinesisClientLibConfiguration(config: ConsumerConfiguration): KinesisClientLibConfiguration =
     new KinesisClientLibConfiguration(
       config.applicationName,
