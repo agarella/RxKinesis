@@ -1,6 +1,6 @@
 # RxKinesis
 
-An Rx library for Amazon Kinesis.
+ScalaRx bindings for Amazon Kinesis.
 
 ## Amazon Kinesis
 
